@@ -1,0 +1,33 @@
+# Yielda Ambience Profiling — local Docker Compose stack.
+#
+#   docker compose up --build     # first time, or after code/deps changes
+#   docker compose up             # subsequent runs
+#   docker compose down           # stop and remove the container
+#
+# Open the UI at http://localhost:8000 once logs show "Application startup
+# complete." Compose loads the project-root `.env` for API keys — if it's
+# missing, the app boots in mock mode and the UI still works end-to-end.
+
+services:
+  yielda-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yielda-app:latest
+    container_name: yielda-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist crawler/LLM caches across container restarts and make them
+      # easy to inspect from the host. Comment this out if you want a fully
+      # ephemeral container.
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

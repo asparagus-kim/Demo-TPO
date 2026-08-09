@@ -1,0 +1,57 @@
+# --- Secrets & local-only config -------------------------------------------
+# .env is NEVER baked into the image. Compose injects it at container start
+# via `env_file`, so it stays on the host.
+.env
+.env.local
+.env.*.local
+
+# --- Python build artefacts ------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Virtualenvs -----------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# --- Git & VCS -------------------------------------------------------------
+.git/
+.gitignore
+.gitattributes
+
+# --- IDE / editor junk -----------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Runtime caches & debug artefacts --------------------------------------
+# Anything the app writes into `cache/` is remounted from the host at runtime
+# (see docker-compose.yml), so there's no point shipping it inside the image.
+cache/
+logs/
+*.log
+debug_result_page.png
+debug_result_page.txt
+api_errors_*.log
+
+# --- Tests & docs ----------------------------------------------------------
+tests/
+*.md
+!README.md
+
+# --- Docker files themselves -----------------------------------------------
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# --- Node (none today, but cheap to exclude) -------------------------------
+node_modules/

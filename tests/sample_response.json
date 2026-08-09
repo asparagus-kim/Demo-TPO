@@ -1,0 +1,75 @@
+{
+  "success": true,
+  "business_number": "387-81-03198",
+  "nts_status": "계속사업자",
+  "business_info": {
+    "company_name": "샘플카페 강남점",
+    "business_type": "커피전문점",
+    "address": "서울특별시 강남구 역삼동",
+    "company_intro": "샘플카페는 오피스 밀집 상권에서 운영되는 카페입니다."
+  },
+  "trade_area": {
+    "label": "오피스 밀집 상권",
+    "matched_address": "서울특별시 강남구 역삼1동",
+    "match_method": "prefix",
+    "confidence": 0.85
+  },
+  "google_places": {
+    "place_id": "mock-place-id-0001",
+    "place_name": "샘플카페 강남점",
+    "formatted_address": "서울특별시 강남구 역삼동 123-4",
+    "business_hours": [
+      "월요일: 07:00 – 22:00",
+      "화요일: 07:00 – 22:00",
+      "수요일: 07:00 – 22:00",
+      "목요일: 07:00 – 22:00",
+      "금요일: 07:00 – 23:00",
+      "토요일: 10:00 – 23:00",
+      "일요일: 10:00 – 21:00"
+    ],
+    "rating": 4.3,
+    "review_count": 3214,
+    "reviews": [
+      {"author": "user1", "rating": 4.6, "text": "점심시간마다 붐비지만 회전이 빨라 테이크아웃이 편합니다.", "language": "ko", "relative_time": "1주 전"}
+    ],
+    "place_types": ["cafe", "food", "point_of_interest"],
+    "location": {"lat": 37.5006, "lng": 127.0363}
+  },
+  "weather": {
+    "summary": "흐림 · 18.4℃",
+    "temperature_c": 18.4,
+    "condition": "cloudy",
+    "precipitation_mm": 0.0,
+    "humidity": 62.0,
+    "source_time": "20260420 1400"
+  },
+  "tpo_profile": {
+    "time_label": "평일 7시–22시 · 주말 10시–23시",
+    "place_label": "카페 · 오피스 밀집 상권",
+    "occasion_label": "점심 커피",
+    "peak_slots": ["점심 피크 (11–14시)", "저녁 (17–21시)"]
+  },
+  "ambience": {
+    "energy": 65,
+    "tempo": 73,
+    "mood": 60,
+    "component_scores": {
+      "text": {"E": 0.62, "T": 0.71, "M": 0.58, "c_text": 0.72},
+      "area": {"E": 0.72, "T": 0.82, "M": 0.52},
+      "type": {"E": 0.52, "T": 0.42, "M": 0.80},
+      "time": {"E": 0.62, "T": 0.65, "M": 0.63},
+      "weather": {"E": 0.52, "T": 0.50, "M": 0.56}
+    },
+    "confidence": 0.72,
+    "explanations": [
+      "리뷰에 점심·업무 관련 방문 언급이 많아 템포가 높게 산정되었습니다.",
+      "오피스 밀집 상권 특성이 반영되어 에너지가 중상 수준입니다.",
+      "리뷰의 좌석/분위기 언급을 반영해 무드는 안정적으로 평가되었습니다.",
+      "영업시간 기준 활동 피크: 점심 피크 (11–14시), 저녁 (17–21시)."
+    ]
+  },
+  "debug": {
+    "llm_prompt_version": "v1",
+    "reviews_used": 12
+  }
+}

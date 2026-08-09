@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yielda 매장 음악 추천 — 프로젝트 브리핑</title>
+<style>
+:root{
+  --ink:#12181f; --body:#2f3a46; --mute:#6b7885; --line:#dfe5ec; --bg:#ffffff;
+  --soft:#f6f8fa; --accent:#b45f2b; --accent-soft:#fdf3ec;
+  --ok:#166534; --ok-soft:#f0fdf4; --warn:#92400e; --warn-soft:#fffbeb;
+  --bad:#991b1b; --bad-soft:#fef2f2;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--body);
+  font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',
+              Roboto,'Noto Sans KR',sans-serif;
+  line-height:1.75; font-size:16px; word-break:keep-all;
+}
+.wrap{max-width:880px; margin:0 auto; padding:0 28px 96px}
+header.cover{border-bottom:3px solid var(--ink); padding:64px 0 28px; margin-bottom:8px}
+.eyebrow{font-size:13px; letter-spacing:.16em; color:var(--accent); font-weight:700; text-transform:uppercase}
+h1{font-size:34px; line-height:1.3; margin:12px 0 10px; color:var(--ink); letter-spacing:-.02em}
+.sub{font-size:17px; color:var(--mute); margin:0}
+.meta{margin-top:22px; font-size:13.5px; color:var(--mute)}
+.meta b{color:var(--body)}
+h2{
+  font-size:24px; color:var(--ink); letter-spacing:-.02em; line-height:1.35;
+  margin:64px 0 4px; padding-top:20px; border-top:1px solid var(--line);
+}
+h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; margin-right:10px}
+h3{font-size:18px; color:var(--ink); margin:34px 0 8px; letter-spacing:-.01em}
+h4{font-size:15.5px; color:var(--ink); margin:24px 0 6px}
+p{margin:12px 0}
+ul,ol{margin:12px 0; padding-left:22px}
+li{margin:6px 0}
+strong{color:var(--ink); font-weight:700}
+code{
+  font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace; font-size:.88em;
+  background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:1px 5px;
+}
+pre{
+  background:#11161c; color:#dfe7ef; border-radius:10px; padding:16px 18px;
+  overflow-x:auto; font-size:13.5px; line-height:1.62; margin:16px 0;
+  font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+}
+pre code{background:none; border:0; padding:0; color:inherit; font-size:inherit}
+table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14.5px}
+th,td{border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top}
+th{background:var(--soft); font-weight:700; color:var(--ink)}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+.tbl-scroll{overflow-x:auto; margin:18px 0}
+.tbl-scroll table{margin:0}
+.callout{border-left:4px solid var(--accent); background:var(--accent-soft);
+  padding:14px 18px; border-radius:0 8px 8px 0; margin:20px 0}
+.callout.ok{border-color:var(--ok); background:var(--ok-soft)}
+.callout.warn{border-color:var(--warn); background:var(--warn-soft)}
+.callout.bad{border-color:var(--bad); background:var(--bad-soft)}
+.callout p:first-child{margin-top:0} .callout p:last-child{margin-bottom:0}
+.callout .label{display:block; font-size:12.5px; font-weight:800; letter-spacing:.06em;
+  text-transform:uppercase; margin-bottom:6px; color:var(--accent)}
+.callout.ok .label{color:var(--ok)} .callout.warn .label{color:var(--warn)}
+.callout.bad .label{color:var(--bad)}
+.toc{background:var(--soft); border:1px solid var(--line); border-radius:12px;
+  padding:22px 26px; margin:32px 0}
+.toc h2{margin:0 0 10px; padding:0; border:0; font-size:16px; letter-spacing:.04em}
+.toc ol{margin:0; padding-left:20px; columns:2; column-gap:34px}
+.toc li{margin:5px 0; break-inside:avoid}
+.toc a{color:var(--body); text-decoration:none; border-bottom:1px solid transparent}
+.toc a:hover{border-bottom-color:var(--accent); color:var(--accent)}
+.flow{background:var(--soft); border:1px solid var(--line); border-radius:10px;
+  padding:18px 20px; font-family:'SFMono-Regular',Consolas,monospace;
+  font-size:13.5px; line-height:1.8; overflow-x:auto; white-space:pre; margin:18px 0; color:var(--ink)}
+.kpi{display:flex; flex-wrap:wrap; gap:12px; margin:20px 0}
+.kpi div{flex:1 1 150px; border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:var(--bg)}
+.kpi b{display:block; font-size:24px; color:var(--ink); line-height:1.2; font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px; color:var(--mute)}
+.q{border:1px solid var(--line); border-left:4px solid var(--ink); border-radius:0 10px 10px 0;
+  padding:16px 20px; margin:18px 0; background:var(--bg)}
+.q .qh{font-weight:800; color:var(--ink); font-size:16px; margin-bottom:6px}
+.tag{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+  background:var(--soft); color:var(--mute); border:1px solid var(--line); vertical-align:middle}
+.tag.now{background:var(--ok-soft); color:var(--ok); border-color:#bbf7d0}
+.tag.next{background:var(--warn-soft); color:var(--warn); border-color:#fde68a}
+.tag.later{background:var(--soft); color:var(--mute)}
+footer{margin-top:72px; padding-top:22px; border-top:1px solid var(--line);
+  font-size:13px; color:var(--mute)}
+@media print{
+  body{font-size:11pt} .wrap{max-width:none; padding:0}
+  h2{page-break-after:avoid} table,pre,.callout,.q{page-break-inside:avoid}
+  .toc{page-break-after:always}
+}
+@media (max-width:640px){ .toc ol{columns:1} h1{font-size:27px} .wrap{padding:0 18px 64px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="eyebrow">개발자 인수인계 · 프로젝트 브리핑</div>
+  <h1>사업자등록번호 하나로<br>매장에 맞는 음악을 찾아주는 시스템</h1>
+  <p class="sub">Yielda × 엠금융 소상공인 통합지원 파일럿 — 시연용 데모</p>
+  <p class="meta">
+    작성일 <b>2026년 8월 6일</b> · 작성자 <b>Shun (기획)</b><br>
+    대상 <b>Ali</b> · 상태 <b>개발 완료, 미배포 (대표자 결정 대기)</b>
+  </p>
+</header>
+
+<div class="callout">
+  <span class="label">이 문서를 읽는 목적</span>
+  <p><strong>먼저 현재 프로젝트 전체를 이해하는 것</strong>이 첫 번째 과제입니다. 그다음 함께
+  논의하고 싶은 것은 두 가지입니다 — <strong>① 음원 매칭 정확도를 어떻게 높일 것인가</strong>,
+  <strong>② 매장 정보 분석 정확도를 어떻게 높일 것인가</strong>.</p>
+  <p><strong>보험 API 연동은 그다음 단계입니다.</strong> 지금 착수 대상이 아닙니다.</p>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">우리가 만들려던 것</a></li>
+    <li><a href="#s2">여기까지 온 과정</a></li>
+    <li><a href="#s3">특이사항 — 반드시 알아야 할 5가지</a></li>
+    <li><a href="#s4">시스템이 하는 일</a></li>
+    <li><a href="#s5">지금 되는 것과 안 되는 것</a></li>
+    <li><a href="#s6">논의 ① 음원 매칭 정확도</a></li>
+    <li><a href="#s7">논의 ② 매장 정보 정확도</a></li>
+    <li><a href="#s8">다음 단계와 우선순위</a></li>
+    <li><a href="#s9">인수 첫 주에 할 일</a></li>
+    <li><a href="#sA">부록 — API 발급처</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════ 1 -->
+<h2 id="s1"><span class="num">1</span>우리가 만들려던 것</h2>
+
+<h3>한 문장</h3>
+<p>점주가 <strong>사업자등록번호 10자리만</strong> 입력하면, 그 매장에 어울리는 음악이 재생됩니다.
+그 외에 아무것도 묻지 않습니다.</p>
+
+<h3>왜 음악인가</h3>
+<p>소상공인은 금융 상품으로 접근하기 어려운 고객군입니다. 그래서 <strong>점주가 실제로 원하는
+것</strong>을 먼저 제공하고, 그 대화에서 상담 데이터를 만들어 파트너사인 <strong>엠금융</strong>에
+전달하는 구조입니다.</p>
+
+<div class="callout">
+  <p><strong>음악은 훅(hook)이고, 사업은 금융 상담입니다.</strong> 이 순서를 뒤집어 이해하면
+  이후 모든 우선순위 판단이 어긋납니다.</p>
+</div>
+
+<h3>이 데모의 두 가지 용도</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:26%">대상</th><th>용도</th></tr></thead>
+  <tbody>
+    <tr><td>대표자 · 엠금융</td><td>본개발에 투자하기 전, 실제 데이터로 개념이 성립함을 증명</td></tr>
+    <tr><td>D2D 영업 담당</td><td>점주 앞에서 폰을 열어 번호를 넣고 음악을 들려주는 세일즈 키트</td></tr>
+  </tbody>
+</table></div>
+
+<p>두 용도 모두 같은 요구를 만듭니다 — <strong>실제로 돌아가는 서비스처럼 보여야 합니다.</strong>
+그래서 결과를 미리 계산해 두지 않았고, 분석에 실제로 2~10초가 걸립니다.</p>
+
+<h3>범위 밖</h3>
+<p>검토했지만 제외한 것들입니다. 다시 꺼내지 마십시오 — AI 음악 생성, 상담 신청 폼과 CRM 연동,
+관리자 콘솔, 다국어 UI, 회원 가입, 결제.</p>
+
+<!-- ══════════════════════════════════════════════ 2 -->
+<h2 id="s2"><span class="num">2</span>여기까지 온 과정</h2>
+
+<p>시간 순서입니다. <strong>각 전환에는 이유가 있고, 그 이유를 모르면 되돌리려 하게 됩니다.</strong></p>
+
+<h3>출발점 — 이전 개발자의 구현</h3>
+<p>사업자번호를 넣으면 매장의 분위기를 <strong>에너지 · 템포 · 무드</strong> 세 숫자로 산출하는
+FastAPI 백엔드가 있었습니다. 국세청 상태조회, 상권 매칭, Google Places, 기상청, LLM 리뷰
+분석까지 파이프라인이 갖춰져 있었습니다.</p>
+
+<div class="callout warn">
+  <span class="label">중요한 전제</span>
+  <p>당시 <strong>유료 API 예산이 승인되지 않았습니다.</strong> 그래서 사업자번호 → 상호명 조회를
+  민간 API(머니핀) 화면을 <strong>크롤링해 임시 구현</strong>했습니다. 잘못된 선택이 아니라,
+  예산 제로라는 제약에 대한 첫 번째 답이었고 실제로 데모가 돌았습니다.</p>
+</div>
+
+<h3>전환 ① 크롤링 → 공식 API</h3>
+<p>크롤링은 대상 페이지가 바뀌면 깨지고, 컨테이너에 헤드리스 브라우저가 필요하고, 팔려는 제품에
+넣기엔 법적으로 불편합니다. <strong>bizno 공식 REST API</strong>로 교체했습니다.</p>
+<p>다만 <strong>예산 제약은 그대로입니다.</strong> 비공식 경로를 공식 경로로 바꿨을 뿐, 가격은
+여전히 0원입니다. 그리고 bizno 무료 플랜은 <strong>상호명만</strong> 줍니다.</p>
+
+<h3>전환 ② 이 한 가지 결핍이 아키텍처를 바꿨습니다</h3>
+<div class="flow">bizno 무료 = 상호명만. 주소 없음. 업종 없음.
+      │
+      ▼
+Kakao 검색에 "어느 지역인지" 힌트를 넣을 수 없다
+      │
+      ▼
+같은 이름의 매장을 원리상 구분할 수 없다
+      │
+      ├──▶ ① Kakao 후보 최대 15건을 점수화
+      ├──▶ ② 사용자가 직접 고르는 2단계 화면
+      ├──▶ ③ 주소 없이 동작하는 정합성 검증
+      └──▶ ④ 지점명에서 지역을 유추하는 우회책</div>
+
+<div class="callout bad">
+  <span class="label">가장 오해하기 쉬운 지점</span>
+  <p><strong>①~④는 임시 구조입니다.</strong> 주소 한 필드가 없어서 존재합니다. 유료 API를
+  도입하면 네 가지가 전부 사라집니다. <strong>다듬는 데 시간을 쓰지 마십시오.</strong></p>
+</div>
+
+<h3>전환 ③ Google Places → Kakao Local <span class="tag">기획자 제안</span></h3>
+<p>무료 API의 한계를 넘고 <strong>한국 소상공인 커버리지</strong>를 높이려는 판단이었습니다.
+이후 측정으로 확인된 근거는 세 가지입니다.</p>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:22%">항목</th><th>Kakao</th><th>Google</th></tr></thead>
+  <tbody>
+    <tr><td>무료 쿼터</td><td><strong>100,000건 / 일</strong></td><td>1,000건 / 월</td></tr>
+    <tr><td>업종 신호</td><td><code>음식점 &gt; 카페 &gt; 커피전문점</code> 경로</td><td><code>place_types</code> — 뭉툭함</td></tr>
+    <tr><td>소상공인 등재율</td><td>높음 (한국인이 쓰는 지도)</td><td>낮음</td></tr>
+  </tbody>
+</table></div>
+<p><strong>Google을 완전히 버리지 못한 이유</strong>: Kakao Local에는 <strong>리뷰와 영업시간이
+아예 없습니다.</strong> 리뷰 텍스트가 분위기 점수의 50%라 포기할 수 없었습니다. 그래서 지도
+API가 두 개인 하이브리드 구조입니다.</p>
+
+<h3>전환 ④ 상권 판정: 엑셀 조회 → 주변 업종 세기</h3>
+<p>기존 방식은 주소에서 동 이름을 뽑아 전국 행정동 엑셀에서 찾는 것이었습니다.
+30곳 벤치마크에서 <strong>정확도 37%</strong>였습니다.</p>
+<p>버그 두 개가 겹쳐 있었고(도로명 주소에는 동이 없음 / 지번 주소는 <strong>법정동</strong>인데
+엑셀은 <strong>행정동</strong> 기준), <strong>둘 다 고친 뒤에도 37%</strong>였습니다. 동 경계가
+상권의 실제 성격과 다르기 때문입니다.</p>
+<p>반경 500m 안의 업종 개수 비율로 판정하도록 바꿨습니다.</p>
+<div class="kpi">
+  <div><b>37% → 90%</b><span>상권 판정 정확도 (30곳)</span></div>
+  <div><b>좌표만 사용</b><span>업종 무관하게 동일 작동</span></div>
+</div>
+
+<h3>전환 ⑤ 음원 추천 기능 신규 개발</h3>
+<p>이전 버전은 E/T/M 숫자를 산출하고 끝났습니다. <strong>데모가 차트로 끝났습니다.</strong>
+제품의 약속이 음악인데 음악이 나오지 않으면 증명이 안 됩니다. 추천 엔진을 새로 만들었습니다.</p>
+
+<h3>전환 ⑥ 2업종 → 11업종</h3>
+<p>파일럿 대상은 <strong>엠금융과 협의해 카페 · 피트니스로 확정</strong>했습니다. 그래서 음원
+매니페스트도 2업종만 담았습니다. <strong>스코프 결정이었지 누락이 아닙니다.</strong></p>
+<p>확장 계기: 미용실을 넣어보니 업종군을 못 찾아 <strong>카페 재즈</strong>가 1위로 나왔습니다.
+그런데 원본 라이브러리에는 미용실 75곡, 바 173곡, 서점 105곡이 이미 있었습니다.
+<strong>664곡 중 604곡을 안 쓰고 있었습니다.</strong> 병목은 라이브러리가 아니라 매니페스트였고,
+넓히는 데 드는 비용은 큐레이션 시간뿐이라 확장성을 택했습니다.</p>
+
+<!-- ══════════════════════════════════════════════ 3 -->
+<h2 id="s3"><span class="num">3</span>특이사항 — 반드시 알아야 할 5가지</h2>
+
+<h3>① 무료 API 구성은 목표가 아니라 유예된 상태입니다</h3>
+<p>원래 지향점은 <strong>유료 API로 상호명 · 주소 · 업종을 한 번에</strong> 받는 것이었습니다.
+예산 미승인으로 미뤄진 것뿐입니다.</p>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:34%">항목</th><th>bizno 무료 (현재)</th><th>apick 유료 (원래 계획)</th></tr></thead>
+  <tbody>
+    <tr><td>상호명</td><td>제공</td><td>제공</td></tr>
+    <tr><td>사업 상태 · 과세유형</td><td>제공</td><td>제공</td></tr>
+    <tr><td><strong>주소</strong></td><td><strong>없음</strong></td><td>제공</td></tr>
+    <tr><td><strong>업종</strong></td><td><strong>없음</strong></td><td>제공</td></tr>
+    <tr><td><strong>위도 · 경도</strong></td><td><strong>없음</strong></td><td>제공</td></tr>
+    <tr><td>대표자 · 개업일 · 전화</td><td>없음</td><td>제공</td></tr>
+    <tr><td>비용</td><td>0원 (200건/일)</td><td>44원/건, 월 최소 55,000원</td></tr>
+  </tbody>
+</table></div>
+<p><strong>유료 전환은 개선 항목이 아니라 원래 계획의 복귀입니다.</strong> 예산 승인만
+남았고, 전환 시 약 280줄의 코드와 화면 하나가 통째로 사라집니다.</p>
+
+<h3>② 후보 선택 화면은 버그가 아닙니다</h3>
+<p>실제 사업자 10곳으로 측정한 결과, <strong>5곳은 자동 확정, 5곳은 사용자 선택이
+필요</strong>했습니다.</p>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:30%">상호명 성격</th><th style="width:22%">자동 확정</th><th>예시</th></tr></thead>
+  <tbody>
+    <tr><td>개성 있는 이름</td><td>가능</td><td>헬카페스피리터스, 송화의카페</td></tr>
+    <tr><td>지점명 포함</td><td>가능</td><td>어게인짐 건대입구역점</td></tr>
+    <tr><td><strong>흔한 이름</strong></td><td><strong>불가</strong></td><td>가은약국, 가온동물병원</td></tr>
+    <tr><td>지도 등재명이 다름</td><td>불가</td><td>VA미용실 → 카카오에는 <code>VA헤어메이크업</code></td></tr>
+  </tbody>
+</table></div>
+<p><strong>피트니스월드</strong>는 중구와 종로구에 이름이 <strong>완전히 동일한</strong> 매장이
+있고 사업자도 다릅니다. 두 후보의 점수가 <code>1.00 : 1.00</code>입니다. 어떤 알고리즘도 이름만으로
+구분할 수 없습니다. <strong>주소만이 답입니다.</strong></p>
+<p>약국 · 편의점 · 병원처럼 흔한 상호가 많은 업종에서는 이 화면이 더 자주 뜹니다.</p>
+
+<h3>③ 현재 UI는 임의로 작성한 값입니다</h3>
+<div class="callout warn">
+  <p>레이아웃, 색상, 문구, 정보 배치 <strong>모두 전체 디자인 변경 예정</strong>입니다.
+  확정 사양이 아니므로 보존하려 애쓰지 마십시오.</p>
+  <p>대신 <strong>유지해야 할 것</strong>은 화면이 아니라 <strong>API 응답 스키마와 상태
+  분기</strong>입니다 — 정상 / 후보 선택 필요 / 오류, 이 세 가지를 새 UI도 반드시 처리해야
+  합니다.</p>
+</div>
+
+<h3>④ 리뷰는 매장당 5건이 상한입니다 — 돈으로 못 늘립니다</h3>
+<p>Google Places API 자체의 제약이라 유료 플랜으로도 늘어나지 않습니다. 그런데
+<strong>리뷰 텍스트가 분위기 점수의 50%</strong>를 차지합니다. 근거가 얇다는 뜻이고,
+현재 설계의 가장 큰 품질 리스크입니다. (논의 ②에서 다룹니다.)</p>
+
+<h3>⑤ 음원 메타데이터는 스프레드시트에서 관리합니다</h3>
+<p>곡의 분위기 정보 — BPM, 에너지, 무드, 적합 업종, 적합 시간대 등 — 는 사내
+<strong>Google 스프레드시트</strong>에서 관리하고, 아래 경로로 서비스에 반영됩니다.</p>
+<div class="flow">Google 스프레드시트          음원 메타데이터 원본 (사람이 관리)
+      │  내보내기
+      ▼
+data.js                     664곡 · 플레이어 프로젝트의 정본
+      │  scripts/curate_demo_tracks.py
+      ▼
+data/demo_tracks.json       620곡 · 이 서비스가 읽는 매니페스트
+      │
+      ▼
+런타임 매칭                   외부 호출 없음</div>
+<p><strong>매칭에 실제로 쓰는 필드</strong>: <code>bpm</code> · <code>energy_level</code> ·
+<code>valence</code> · <code>arousal</code> · <code>suitable_industries</code> ·
+<code>suitable_time_slots</code> · <code>customer_density_fit</code> ·
+<code>purpose_tags</code> · <code>genre</code> · <code>mood</code> · <code>vocal_type</code></p>
+<p><strong>제외한 필드</strong>: <code>warmth</code> · <code>sophistication</code> ·
+<code>quality_score</code>(채워진 곡이 극소수) / <code>suitable_weather</code>(전곡 동일값이라
+변별력 없음)</p>
+<p>매니페스트가 메타데이터를 <strong>자체 포함</strong>하므로, 런타임에는 스프레드시트나
+플레이어 프로젝트 폴더를 참조하지 않습니다. 곡을 추가하거나 메타데이터를 고친 뒤에는
+큐레이션 스크립트를 다시 돌려 매니페스트를 갱신합니다.</p>
+
+<!-- ══════════════════════════════════════════════ 4 -->
+<h2 id="s4"><span class="num">4</span>시스템이 하는 일</h2>
+
+<h3>10단계 파이프라인</h3>
+<div class="flow"> 1  입력 검증      사업자번호 10자리
+ 2  국세청 조회     계속 / 휴업 / 폐업 → 폐업이면 여기서 중단
+ 3  상호명 확보     bizno → 실패 시 사용자에게 직접 입력 요청
+ 4  매장 특정      Kakao 키워드 검색 → 업종 · 주소 · 좌표
+                 └ 모호하면 후보 목록을 보여주고 중단
+ 5  상권 판정      반경 500m 주변 업종 개수 비율
+ 6  리뷰 · 영업시간  Google Places (매장당 최대 5건)
+ 6.1 동일성 검증    Kakao 매장과 Google 매장이 같은 곳인가
+ 5.6 보강         리뷰·영업시간이 없으면 웹 검색으로 보완
+ 7  날씨          기상청 초단기실황 (좌표 → 격자 변환)
+ 8  LLM 스코어링   리뷰 텍스트 → 에너지 · 템포 · 무드 신호
+ 9  융합          LLM + 상권 + 업종 + 시간대 + 날씨 → 최종 E/T/M
+10  음원 매칭      로컬 매니페스트 620곡에서 10곡 선정 (외부 호출 없음)</div>
+
+<h3>어느 API가 무엇을 주는가</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:34%">데이터</th><th>출처</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td>사업 상태</td><td>국세청 (공공)</td><td>무료 · 상호명은 안 줌</td></tr>
+    <tr><td><strong>상호명</strong></td><td>bizno</td><td>무료 플랜은 이것만</td></tr>
+    <tr><td>업종 · 주소 · 좌표</td><td>Kakao Local</td><td>bizno가 안 주므로 이름으로 검색해 확보</td></tr>
+    <tr><td>상권</td><td>Kakao 카테고리 집계</td><td>좌표만 사용</td></tr>
+    <tr><td>리뷰 · 영업시간 · 평점</td><td>Google Places</td><td>리뷰 5건 상한</td></tr>
+    <tr><td>날씨</td><td>기상청 (공공)</td><td>점수의 5%, 곡 선택에는 미사용</td></tr>
+    <tr><td>분위기 E/T/M</td><td>Groq LLM + 사전 가중치</td><td>리뷰가 50%</td></tr>
+    <tr><td>플레이리스트</td><td>로컬 매니페스트</td><td>API 호출 없음</td></tr>
+  </tbody>
+</table></div>
+
+<h3>의존 사슬이 직렬이라 지연이 생깁니다</h3>
+<div class="flow">사업자번호 → 상호명 → 매장 특정 → 좌표 → 날씨
+              (bizno)    (Kakao)          (기상청)</div>
+<p>각 화살표는 앞 결과가 있어야 진행됩니다. 이 축은 병렬화할 수 없습니다. 좌표가 확보된
+뒤의 리뷰 · 상권 · 날씨는 동시에 호출합니다.</p>
+
+<!-- ══════════════════════════════════════════════ 5 -->
+<h2 id="s5"><span class="num">5</span>지금 되는 것과 안 되는 것</h2>
+
+<div class="kpi">
+  <div><b>187</b><span>단위 테스트 통과</span></div>
+  <div><b>16 / 16</b><span>실제 API 대상 E2E</span></div>
+  <div><b>620 / 620</b><span>음원 재생 확인</span></div>
+  <div><b>90%</b><span>상권 판정 정확도</span></div>
+</div>
+
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:30%">항목</th><th>상태</th></tr></thead>
+  <tbody>
+    <tr><td>사업자번호 → 전체 분석</td><td class="ok">5개 업종 실측 검증 (카페 2 · 헬스 2 · 미용실)</td></tr>
+    <tr><td>매장 특정</td><td>자동 확정 + 후보 선택 화면</td></tr>
+    <tr><td>음원 추천</td><td>620곡 · 11업종군</td></tr>
+    <tr><td>반응형</td><td>375 / 768 / 1440px</td></tr>
+    <tr><td>장애 대응</td><td>폐업 차단 · Google 한도 초과 시 Kakao+웹검색으로 degrade</td></tr>
+    <tr><td><strong>배포</strong></td><td><strong>미배포</strong> — Docker 구성은 있음, 대표자 결정 대기</td></tr>
+    <tr><td><strong>음원 QC</strong></td><td><strong>미실시</strong> — 620곡 전부 draft</td></tr>
+    <tr><td><strong>CI</strong></td><td><strong>없음</strong> — git 커밋도 0개</td></tr>
+    <tr><td>UI 디자인</td><td>임시값 — 전면 재설계 예정</td></tr>
+  </tbody>
+</table></div>
+
+<h3>업종군별 음원 분포</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr>
+    <th>업종군</th><th class="num">곡 수</th><th>업종군</th><th class="num">곡 수</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>카페 · 베이커리</td><td class="num">284</td><td>레스토랑</td><td class="num">67</td></tr>
+    <tr><td>리테일 · 편집샵</td><td class="num">246</td><td>피트니스 · 요가</td><td class="num">62</td></tr>
+    <tr><td>바 · 클럽</td><td class="num">229</td><td>오피스</td><td class="num">38</td></tr>
+    <tr><td>서점 · 갤러리</td><td class="num">104</td><td>편의점</td><td class="num">36</td></tr>
+    <tr><td>호텔 · 라운지</td><td class="num">101</td><td>키즈</td><td class="num">31</td></tr>
+    <tr><td>미용 · 네일 · 스파</td><td class="num">100</td><td colspan="2">한 곡이 여러 업종군에 속함 (620곡 중 509곡)</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════ 6 -->
+<h2 id="s6"><span class="num">6</span>논의 ① 음원 매칭 정확도를 어떻게 높일 것인가</h2>
+
+<p>현재 방식과 그 한계를 먼저 공유하고, 제가 생각한 방향을 제안합니다.
+<strong>더 나은 안이 있으면 그쪽으로 가는 것이 좋습니다.</strong></p>
+
+<h3>지금 어떻게 고르고 있나</h3>
+<p>매장의 E/T/M 점수를 목표값으로 두고, 후보 곡들과의 거리를 계산해 가까운 순으로 10곡을
+뽑습니다. 가중치는 에너지 30% · 템포 25% · 무드 20% · 시간대 15% · 혼잡도 10%입니다.</p>
+
+<h4>핵심 설계 — 풀 내 상대 정규화</h4>
+<p>곡 메타데이터와 매장 점수는 스케일이 호환되지 않습니다.</p>
+<div class="flow">valence       0.65~0.85 로 폭이 좁음   → 절대 비교하면 무드가 사실상 무시됨
+energy_level  피트니스 곡은 대부분 8.0   → 상수라 어떤 절대 기준으로도 구분 불가
+bpm           카페 60~129 / 헬스 118~160 → 분포가 거의 겹치지 않음</div>
+<p>그래서 각 축을 <strong>후보 풀 안에서 최소–최대 정규화</strong>하고 목표값의 상대 위치와
+비교합니다. 폭이 좁은 축도 변별력을 되찾고, 값이 일정한 축은 자동으로 "정보 없음"이 되어
+점수에서 빠집니다.</p>
+
+<h3>측정된 한계 3가지</h3>
+
+<div class="q">
+  <div class="qh">한계 1 — 피트니스 업종 내부에서 구분이 거의 안 됩니다</div>
+  <p>헬스장 62곡이 대부분 <code>energy_level 8</code>의 EDM입니다. 목표 에너지를 60에서 75로
+  올려도 <strong>상위 10곡 중 8곡이 그대로</strong>입니다.</p>
+  <p>즉 "붐비는 24시 헬스장"과 "조용한 동네 헬스장"이 거의 같은 플레이리스트를 받습니다.
+  카페는 284곡으로 늘어 인접 구간 겹침이 3~5/10로 개선됐습니다.</p>
+  <p><strong>원인은 알고리즘이 아니라 음원 메타데이터입니다.</strong></p>
+</div>
+
+<div class="q">
+  <div class="qh">한계 2 — 시간대 태그가 부족합니다</div>
+  <p>원본 664곡 중 <code>lunch</code> 태그가 붙은 곡이 <strong>104곡</strong>뿐입니다.
+  일부 업종군은 점심 시간대 곡이 아예 없어, 곡을 더 넣어도 해결되지 않습니다.</p>
+</div>
+
+<div class="q">
+  <div class="qh">한계 3 — 전곡 청취 검사는 아직 이루어지지 않았습니다</div>
+  <p>620곡 전체를 대상으로 한 청취 검사는 아직 진행 전입니다. 알고리즘이 정확해도 곡 자체가
+  매장 BGM으로 맞지 않으면 효과가 반감되므로, 업종별 표본부터 순차적으로 확인해 나가는 것이
+  좋겠습니다. 참고로 가사가 있는 곡이 191곡입니다.</p>
+</div>
+
+<h3>제안하는 방향 (논의 대상)</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:6%">우선</th><th style="width:30%">방향</th><th>내용과 기대 효과</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>높음</td>
+      <td>음원 메타데이터 재작업</td>
+      <td>피트니스 곡의 에너지 · 시간대 · 혼잡도 값을 실제 분포에 맞게 다시 매깁니다.
+          아침 운동 · 저강도 스트레칭 · 요가 등 축이 필요합니다.
+          <strong>음악 팀과 협업이 필요한 항목</strong>이고, 알고리즘 개선보다 효과가 큽니다.</td>
+    </tr>
+    <tr>
+      <td>높음</td>
+      <td>사람 검수 (QC)</td>
+      <td>620곡 청취 후 부적합 곡에 <code>review: reject</code>. 점진적으로 가능하고,
+          세일즈 사고를 막는 가장 확실한 수단입니다.</td>
+    </tr>
+    <tr>
+      <td>중간</td>
+      <td>피드백 루프</td>
+      <td>점주가 "이 곡 좋다/별로다"를 남기면 그 신호로 가중치를 조정합니다.
+          현재는 일방향입니다. <strong>어떤 UI로 받을지가 논의 대상</strong>입니다.</td>
+    </tr>
+    <tr>
+      <td>중간</td>
+      <td>시간대별 재추천</td>
+      <td>지금은 분석 시점 1회입니다. 실제 매장은 아침·점심·저녁 분위기가 다릅니다.
+          같은 매장에 시간대별 플레이리스트를 주는 것이 자연스럽습니다.</td>
+    </tr>
+    <tr>
+      <td>검토</td>
+      <td>강화학습 보정 코드</td>
+      <td>저장소에 PPO로 가중치를 학습하는 실험 코드 2,235줄이 있습니다.
+          <strong>프로덕션에서 호출되지 않고 검증된 적도 없습니다.</strong>
+          존치 · 완성 · 삭제를 함께 결정해야 합니다.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════ 7 -->
+<h2 id="s7"><span class="num">7</span>논의 ② 매장 정보 분석 정확도를 어떻게 높일 것인가</h2>
+
+<h3>정확도가 걸리는 지점은 셋입니다</h3>
+
+<div class="q">
+  <div class="qh">지점 1 — 매장 특정 (가장 큰 문제)</div>
+  <p>주소가 없어 이름만으로 찾습니다. 10곳 중 5곳이 사용자 선택을 거쳤습니다.
+  약국 · 편의점처럼 흔한 상호 업종에서는 더 심해집니다.</p>
+  <p><strong>해결책은 명확합니다 — 유료 API 도입.</strong> 알고리즘으로는 한계가 있습니다.
+  이름이 완전히 같은 두 매장을 이름으로 구분할 방법은 없습니다.</p>
+  <p>도입 전까지의 완화책으로 논의할 만한 것: 점주에게 <strong>지역만 물어보기</strong>
+  (시/군/구 한 단어). 후보를 크게 줄일 수 있고, 사업자번호보다 입력 부담이 작습니다.</p>
+</div>
+
+<div class="q">
+  <div class="qh">지점 2 — 분위기 판단의 근거가 얇습니다</div>
+  <p>리뷰 5건이 점수의 50%를 담당합니다. 리뷰가 아예 없는 매장도 있습니다
+  (실측: 피트니스월드 0건).</p>
+  <p>현재 웹 검색 보강은 <strong>리뷰가 없을 때만</strong> 작동하는 폴백입니다.
+  이를 <strong>상시 보강</strong>으로 바꾸면 근거가 두꺼워집니다. 다만 웹 검색 품질이
+  들쭉날쭉해 <strong>어떤 신뢰도 기준으로 섞을지가 논의 대상</strong>입니다.</p>
+  <p>추가로 검토할 만한 것: 네이버 플레이스 리뷰(한국 소상공인 리뷰가 훨씬 많음),
+  인스타그램 해시태그, 배달앱 리뷰.</p>
+</div>
+
+<div class="q">
+  <div class="qh">지점 3 — 상권 판정 (해결됨, 다만 검증 세트가 작음)</div>
+  <p>37% → 90%로 올렸습니다. 다만 벤치마크가 <strong>30곳</strong>이고 기대 레이블은
+  제 판단입니다. 상권 분류에 객관적 정답이 없다는 점을 감안해야 합니다.</p>
+  <p>지방 · 비수도권에서 같은 임계값이 통하는지는 <strong>검증되지 않았습니다.</strong>
+  현재 벤치마크는 서울 중심입니다.</p>
+</div>
+
+<h3>정리 — 무엇이 정확도를 가장 크게 올리나</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:8%">순위</th><th style="width:32%">조치</th><th>효과</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>유료 사업자조회 API 도입</strong></td>
+        <td>매장 특정이 정확해지고, 후보 선택 화면이 사라지며, 임시 코드 280줄이 삭제됩니다.
+            <strong>예산 승인만 남은 사안입니다.</strong></td></tr>
+    <tr><td>2</td><td>음원 메타데이터 재작업</td><td>업종 내부 변별력 확보 (특히 피트니스)</td></tr>
+    <tr><td>3</td><td>리뷰 근거 확대</td><td>분위기 판단의 신뢰도. 네이버 플레이스 검토 포함</td></tr>
+    <tr><td>4</td><td>음원 QC</td><td>세일즈 사고 방지</td></tr>
+    <tr><td>5</td><td>비수도권 상권 검증</td><td>전국 확대 시 필수</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════ 8 -->
+<h2 id="s8"><span class="num">8</span>다음 단계와 우선순위</h2>
+
+<div class="callout">
+  <span class="label">순서</span>
+  <p><strong>1단계 <span class="tag now">지금</span></strong> — 현재 프로젝트 전체를 이해합니다.<br>
+     <strong>2단계 <span class="tag next">다음</span></strong> — 위 두 가지 정확도 개선을 함께 논의하고 계획합니다.<br>
+     <strong>3단계 <span class="tag later">그다음</span></strong> — <strong>보험 API 연동.</strong></p>
+  <p><strong>보험 API는 지금 착수 대상이 아닙니다.</strong> 매장 분석과 음원 추천이
+  신뢰할 수준이 된 뒤에 붙이는 것이 순서입니다. 훅이 먼저 작동해야 상담으로 이어집니다.</p>
+</div>
+
+<h3>기술 부채 — 개선 논의와 별개로 처리해야 할 것</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:26%">항목</th><th>내용</th><th style="width:16%">규모</th></tr></thead>
+  <tbody>
+    <tr><td><strong>git 최초 커밋</strong></td>
+        <td>현재 커밋 0개. 이력도 diff도 blame도 없습니다. <strong>인수 첫 작업</strong>입니다.</td>
+        <td>즉시</td></tr>
+    <tr><td>CI 구축</td><td><code>pytest</code> + E2E 스크립트 자동 실행</td><td>반나절</td></tr>
+    <tr><td>파이프라인 통합 테스트</td>
+        <td>10단계를 엮는 라우터에 테스트가 없습니다. 가장 깨지기 쉬운 파일입니다.</td>
+        <td>1~2일</td></tr>
+    <tr><td>코드 주석 영어화</td>
+        <td>핵심 5개 모듈에 한국어 주석 388줄. 제품 문구와 섞여 있어 <strong>일괄 치환 불가</strong>,
+            수작업 필요합니다.</td>
+        <td>1일</td></tr>
+    <tr><td>강화학습 코드 정리</td><td>2,235줄, 미검증, 프로덕션 미사용. 존치 여부 결정</td><td>논의</td></tr>
+  </tbody>
+</table></div>
+
+<h3>인계에 필요한 외부 자산 <span class="tag next">기획자 처리</span></h3>
+<p>코드와 문서만으로는 동작하지 않습니다. 아래 접근 권한이 함께 정리되어야 합니다.</p>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:30%">자산</th><th>없으면</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Cloudflare R2 버킷</strong></td>
+        <td><strong>음악이 전혀 재생되지 않습니다</strong> — 620곡 전부. 대체 불가</td></tr>
+    <tr><td>GCP 프로젝트</td><td>리뷰 · 영업시간 없음 (과금 연결됨)</td></tr>
+    <tr><td>data.go.kr · Kakao · Groq · bizno</td><td>개발자가 직접 발급 가능 (문서에 절차 있음)</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════ 9 -->
+<h2 id="s9"><span class="num">9</span>인수 첫 주에 할 일</h2>
+
+<ol>
+  <li><strong>이 문서를 읽습니다.</strong> 전체 그림과 논의 주제를 파악합니다.</li>
+  <li><strong><code>HANDOVER.md</code>를 읽습니다.</strong> 저장소 안의 기술 정본입니다.
+      Part 0(설계 배경) → Part I(구조 · 실행 · 함정 20건) → Part II(API 한계) →
+      Part III(한국 도메인) 순서입니다.</li>
+  <li><strong>로컬에서 띄웁니다.</strong> 키 6종을 발급하고 <code>python scripts/check_keys.py</code>로
+      확인한 뒤 실행합니다.</li>
+  <li><strong>검증 스크립트를 돌립니다.</strong>
+      <code>pytest</code>(187개) → <code>scripts/smoke_all.py</code>(실제 API 16개) →
+      <code>scripts/trade_area_validate.py report</code>(상권 정확도).</li>
+  <li><strong>git 최초 커밋을 만듭니다.</strong></li>
+  <li><strong>6장 · 7장의 논의 항목에 의견을 정리해 옵니다.</strong> 이것이 다음 미팅의 안건입니다.</li>
+</ol>
+
+<div class="callout ok">
+  <span class="label">한 문장 요약</span>
+  <p>이 시스템은 <strong>예산 제약 아래 무료 API만으로 만든 개념 증명</strong>이고, 실제로
+  동작합니다. 지금 필요한 것은 기능 추가가 아니라 <strong>정확도</strong>입니다 —
+  매장을 정확히 찾고, 그 매장에 정말 맞는 음악을 고르는 것. 보험 연동은 그 뒤입니다.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════ 부록 -->
+<h2 id="sA"><span class="num">부록</span>API 발급처</h2>
+
+<h3>현재 사용 중</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:20%">API</th><th style="width:14%">용도</th><th style="width:30%">발급처</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>국세청 사업자등록 상태조회</strong></td><td>사업 상태</td>
+      <td><a href="https://www.data.go.kr">www.data.go.kr</a></td>
+      <td>회원가입 → 해당 API 검색 → <strong>활용신청</strong>(자동승인) → 마이페이지에서 키 확인.
+          <strong>Decoding 키</strong>를 쓸 것</td>
+    </tr>
+    <tr>
+      <td><strong>기상청 초단기실황</strong></td><td>날씨</td>
+      <td><a href="https://www.data.go.kr">www.data.go.kr</a></td>
+      <td>위와 <strong>같은 인증키</strong>. 단, 활용신청은 API별로 따로</td>
+    </tr>
+    <tr>
+      <td><strong>Kakao Local</strong></td><td>업종·주소·좌표·상권</td>
+      <td><a href="https://developers.kakao.com">developers.kakao.com</a></td>
+      <td>앱 추가 → REST API 키 복사 → <strong>제품 설정 &gt; 카카오맵 사용 설정 ON</strong>
+          (빼먹으면 401). 무료 10만건/일</td>
+    </tr>
+    <tr>
+      <td><strong>bizno</strong></td><td>사업자번호 → 상호명</td>
+      <td><a href="https://bizno.net/openapi">bizno.net/openapi</a><br>
+          <span style="color:#6b7885">키 발급: <a href="https://api.bizno.net">api.bizno.net</a></span></td>
+      <td>문서 <a href="https://docs.bizno.moneypin.biz/api">docs.bizno.moneypin.biz/api</a><br>
+          무료 200건/일 · 1초당 1회</td>
+    </tr>
+    <tr>
+      <td><strong>Groq</strong></td><td>LLM 리뷰 분석</td>
+      <td><a href="https://console.groq.com">console.groq.com</a></td>
+      <td>API Keys → Create. <code>gsk_...</code> 는 <strong>재확인 불가</strong>, 즉시 저장.
+          OpenAI 호환이라 코드 수정 불필요</td>
+    </tr>
+    <tr>
+      <td><strong>Google Places (New)</strong></td><td>리뷰·영업시간</td>
+      <td><a href="https://console.cloud.google.com">console.cloud.google.com</a></td>
+      <td>프로젝트 생성 → Places API (New) 사용 설정 → 사용자 인증 정보.
+          <strong>결제수단 등록 필요</strong>, 무료 월 1,000건</td>
+    </tr>
+    <tr>
+      <td><strong>Cloudflare R2</strong></td><td>음원 호스팅</td>
+      <td><a href="https://dash.cloudflare.com">dash.cloudflare.com</a></td>
+      <td>키 발급이 아니라 <strong>기존 버킷 접근 권한 이전</strong>이 필요.
+          620곡이 여기 있습니다</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>사용 예정 · 검토 대상</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th style="width:20%">API</th><th style="width:14%">용도</th><th style="width:30%">발급처</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>apick</strong></td><td>사업자번호 → 상호명 <strong>+ 주소 + 업종</strong></td>
+      <td><a href="https://apick.app">apick.app</a><br>
+          <span style="color:#6b7885">문서 <a href="https://apick.app/dev_guide/biz_detail">/dev_guide/biz_detail</a> ·
+          요금 <a href="https://apick.app/prepayment">/prepayment</a></span></td>
+      <td><strong>최우선 도입 대상.</strong> 44원/건, 월 최소 55,000원.
+          도입 시 후보 선택 화면과 임시 코드 280줄이 사라집니다 (3장 ①, 7장)</td>
+    </tr>
+    <tr>
+      <td><strong>OpenAI</strong></td><td>LLM (Groq 대체·병행)</td>
+      <td><a href="https://platform.openai.com">platform.openai.com</a></td>
+      <td>현재 Groq를 OpenAI 호환 경로로 쓰고 있어 <strong>키와 <code>OPENAI_BASE_URL</code>만
+          바꾸면 즉시 전환</strong>됩니다. 품질↑ / 유료</td>
+    </tr>
+    <tr>
+      <td>네이버 플레이스</td><td>리뷰 보강</td>
+      <td><a href="https://developers.naver.com">developers.naver.com</a></td>
+      <td>7장 논의 대상. 한국 소상공인 리뷰가 Google보다 훨씬 많음.
+          단, 공식 API로 매장 리뷰 본문을 주는지 확인 필요</td>
+    </tr>
+    <tr>
+      <td>SerpAPI 또는 Google CSE</td><td>웹 검색 보강</td>
+      <td><a href="https://serpapi.com">serpapi.com</a> /
+          <a href="https://programmablesearchengine.google.com">programmablesearchengine.google.com</a></td>
+      <td>현재 웹 검색은 무료 경로를 씁니다. 안정성이 필요해지면 검토</td>
+    </tr>
+    <tr>
+      <td>국민연금 사업장 내역</td><td>직원 수</td>
+      <td><a href="https://www.data.go.kr">www.data.go.kr</a></td>
+      <td>기존 data.go.kr 키 재사용 가능 · <strong>활용신청만 하면 됨</strong>.
+          현재 미신청 상태라 <code>check_keys.py</code>에서 FAIL로 표시됩니다</td>
+    </tr>
+    <tr>
+      <td><strong>보험사 API</strong></td><td>상담 연동</td>
+      <td>엠금융 협의</td>
+      <td><strong>다음 단계</strong> (8장). 지금 착수 대상 아님</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<div class="callout warn">
+  <p><strong>키는 이 문서로 전달하지 않습니다.</strong> 위 사이트에서 직접 발급하십시오.
+  data.go.kr · Kakao · Groq · bizno 네 가지는 무료이고 즉시 발급됩니다.</p>
+  <p><strong>Cloudflare R2와 Google Cloud는 예외</strong>입니다 — 기존 자산이라 발급이 아니라
+  접근 권한 이전이 필요합니다 (8장).</p>
+</div>
+
+<footer>
+  Yielda × 엠금융 소상공인 통합지원 파일럿 · 시연용 데모 프로젝트 브리핑<br>
+  2026-08-06 작성 · 기술 상세는 저장소의 <code>HANDOVER.md</code> 참조
+</footer>
+
+</div>
+</body>
+</html>

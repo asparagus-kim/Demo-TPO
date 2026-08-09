@@ -1,0 +1,48 @@
+# secrets
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# debug artefacts
+debug_result_page.png
+debug_result_page.txt
+api_errors_*.log
+logs/
+cache/
+*.log
+
+# node — frontend/ and backend/ both carry their own dependency trees (~440MB)
+node_modules/
+frontend
+backend
+*.tsbuildinfo
+
+# tooling scratch — MCP browser captures and generated report artefacts
+.playwright-mcp/
+outputs/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+
+# docker — local overrides only; Dockerfile and docker-compose.yml are tracked
+docker-compose.override.yml
+.docker/
+
+# 실사업자 원본 데이터 — 테스트 번호 추출용으로만 사용했다.
+# 통신판매업 신고는 공개 정보지만 저장소에 5MB를 박을 이유가 없고,
+# 시연에 필요한 번호는 HANDOVER.md 와 scripts/smoke_all.py 에 이미 들어 있다.
+# Raw lists of real businesses, used only to source test numbers. Not needed at runtime.
+쇼핑사업자*/
