@@ -17,6 +17,7 @@ services:
     plan: free
     # 서울에서 가장 가까운 리전. 업스트림(국세청·기상청·Kakao)도 모두 한국에 있다.
     region: singapore
+    repo: https://github.com/Ali747711/yielda-tpo-demo
     branch: main
     autoDeploy: true
 
