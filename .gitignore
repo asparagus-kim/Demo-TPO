@@ -80,3 +80,6 @@ test_python_backend.py
 # Third-party design reference captures. Delete this line to keep tracking them.
 public/
 
+
+# 세션 중 생긴 스크린샷 — 저장소에 넣을 이유가 없다
+image.png
