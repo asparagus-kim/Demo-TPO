@@ -34,6 +34,7 @@ from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt,
 
 from ..config import get_settings
 from ..schemas import PlaceReview, WebEvidenceItem
+from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 
@@ -258,27 +259,27 @@ async def _run_providers(query: str, max_results: int) -> List[WebEvidenceItem]:
         providers.append(("google_cse", (google_cse_key, google_cse_cx)))
     providers.append(("duckduckgo", None))
 
-    async with httpx.AsyncClient() as client:
-        for name, conf in providers:
-            ck = _cache_key(query, name)
-            if ck in cache:
-                logger.info("web_search cache hit (%s) for '%s'", name, query)
-                return cache[ck]
-            try:
-                if name == "serpapi":
-                    results = await _serpapi_search(client, query, conf, max_results)
-                elif name == "google_cse":
-                    key, cx = conf
-                    results = await _google_cse_search(client, query, key, cx, max_results)
-                else:
-                    results = await _duckduckgo_search(client, query, max_results)
-            except Exception as exc:
-                logger.warning("web_search provider=%s raised: %s", name, exc)
-                results = []
-            if results:
-                cache[ck] = results
-                logger.info("web_search provider=%s returned %d hits", name, len(results))
-                return results
+    client = shared_http.get_client()
+    for name, conf in providers:
+        ck = _cache_key(query, name)
+        if ck in cache:
+            logger.info("web_search cache hit (%s) for '%s'", name, query)
+            return cache[ck]
+        try:
+            if name == "serpapi":
+                results = await _serpapi_search(client, query, conf, max_results)
+            elif name == "google_cse":
+                key, cx = conf
+                results = await _google_cse_search(client, query, key, cx, max_results)
+            else:
+                results = await _duckduckgo_search(client, query, max_results)
+        except Exception as exc:
+            logger.warning("web_search provider=%s raised: %s", name, exc)
+            results = []
+        if results:
+            cache[ck] = results
+            logger.info("web_search provider=%s returned %d hits", name, len(results))
+            return results
 
     logger.info("web_search: no provider returned hits for '%s'", query)
     return []

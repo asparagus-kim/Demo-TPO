@@ -30,6 +30,7 @@ import httpx
 
 from ..config import get_settings
 from ..schemas import BizCandidate, BizIdentity
+from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 
@@ -104,8 +105,8 @@ async def _lookup_bizno(digits: str) -> Optional[Dict[str, str]]:
     params = {"key": settings.bizno_api_key, "q": digits, "type": "json"}
     async with _bizno_lock:
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(settings.bizno_api_url, params=params, timeout=20)
+            resp = await shared_http.get_client().get(
+                settings.bizno_api_url, params=params, timeout=20)
         except Exception as exc:
             logger.warning("bizno 호출 실패: %s", exc)
             return None

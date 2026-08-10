@@ -59,7 +59,43 @@ Never copy Spotify's brand colors, logo, or name into product UI.
   generous vertical rhythm: 24–32px between blocks, 8px label→input.
 - **Buttons are 48px tall**, bold label, no size change between states.
 
-### 2.2 Color tokens (values TBD — user will supply)
+### 2.2 Color tokens — **sky blue** family (CEO-confirmed direction)
+
+One OKLCH hue family (**H ≈ 232–243**), split across two moods:
+**light-sky onboarding** (entry screen) and **near-black stream/result** with a
+sky accent. Values live only in `frontend/src/index.css`; every value below is
+clamped into sRGB, so don't raise chroma past it or the browser re-maps it.
+
+**Dark shell** (`.dark` — stream, result). One accent token does both jobs:
+#38BDF8 takes a near-black label as a fill (9.2:1) *and* reads as text on the
+page (9.1:1), so `bg-primary`+`text-primary-foreground` and plain `text-primary`
+are both correct — there is no separate "accent for text" token.
+
+| Token | OKLCH | Hex |
+|---|---|---|
+| `--primary` | `0.754 0.139 232.7` | **#38BDF8** sky-400 |
+| `--primary-foreground` | `0.145 0 0` | #0A0A0A |
+| `--primary-deep` | `0.4 0.089 238` | #004D72 |
+| `--background` | `0.155 0.008 234` | #090D0F |
+| `--panel` / `--card` | `0.185 0.010` / `0.215 0.012` | #0E1316 / #141A1E |
+
+**Light-sky onboarding** (`.theme-onboarding-v2`) — the entry screen only; it
+re-declares the same semantic names with light values, so the shared wizard
+blocks flip palette with zero component edits.
+
+| Token | OKLCH | Hex |
+|---|---|---|
+| `--background` | `0.972 0.016 234` | #ECF8FF pale sky page |
+| `--panel` → `--primary-deep` | `0.895 0.06` → `0.85 0.085` | #B6E4FF → #94D8FC (panel sweep) |
+| `--card` | `1 0 0` | #FFFFFF — cards lift off the sky panel |
+| `--primary` | `0.5 0.121 243` | #0069A2, **white** label (5.9:1) |
+| `--foreground` | `0.245 0.035 240` | #10232F ink |
+| `--muted-foreground` | `0.44 0.048 240` | #3A566B (5.7:1 on panel) |
+
+Known follow-up: `public/onboarding-3.png` still has a green bloom baked in
+(invisible on the pale-sky page, but worth re-exporting).
+
+### 2.2b Semantic mapping
 
 Components must reference **semantic tokens only** — never hardcoded hex/oklch values.
 Token values live in ONE place: `frontend/src/index.css` (`:root` and `.dark`), already

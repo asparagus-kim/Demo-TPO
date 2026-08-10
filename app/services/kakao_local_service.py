@@ -38,6 +38,7 @@ from rapidfuzz import fuzz
 
 from ..config import get_settings
 from ..schemas import PlaceCandidate
+from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 from .entity_validation_service import normalize_company_name
@@ -316,12 +317,12 @@ async def search_candidates(
     queries.append(name)
 
     docs: List[Dict[str, Any]] = []
-    async with httpx.AsyncClient() as client:
-        for q in queries:
-            docs = await _keyword_search(client, q, size)
-            if docs:
-                logger.info("Kakao '%s' → %d건", q, len(docs))
-                break
+    client = shared_http.get_client()
+    for q in queries:
+        docs = await _keyword_search(client, q, size)
+        if docs:
+            logger.info("Kakao '%s' → %d건", q, len(docs))
+            break
 
     cands = score_candidates(name, [_doc_to_candidate(d) for d in docs],
                              address_hint=hint, branch_hint=branch)
@@ -408,15 +409,18 @@ async def surroundings(location: Optional[Dict[str, float]]) -> Optional[Dict[st
     lat, lng = location["lat"], location["lng"]
     headers = {"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"}
 
+    # 9건을 동시에 부르되 클라이언트는 공유한다. 호출마다 새 클라이언트를 만들면
+    # SSL 컨텍스트 생성(CPU 38ms)이 GIL에 묶여 직렬화되어 이 구간만 3.3초가 걸렸다.
+    client = shared_http.get_client()
+
     async def one_category(code: str) -> Tuple[str, int]:
         try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    settings.kakao_category_url,
-                    params={"category_group_code": code, "x": lng, "y": lat,
-                            "radius": TA_RADIUS, "size": 1},
-                    headers=headers, timeout=20,
-                )
+            r = await client.get(
+                settings.kakao_category_url,
+                params={"category_group_code": code, "x": lng, "y": lat,
+                        "radius": TA_RADIUS, "size": 1},
+                headers=headers, timeout=20,
+            )
             if r.status_code != 200:
                 return code, 0
             return code, int(((r.json() or {}).get("meta") or {}).get("total_count") or 0)
@@ -425,13 +429,12 @@ async def surroundings(location: Optional[Dict[str, float]]) -> Optional[Dict[st
 
     async def univ_count() -> int:
         try:
-            async with httpx.AsyncClient() as client:
-                r = await client.get(
-                    settings.kakao_keyword_url,
-                    params={"query": "대학교", "x": lng, "y": lat,
-                            "radius": TA_UNIV_RADIUS, "size": 1},
-                    headers=headers, timeout=20,
-                )
+            r = await client.get(
+                settings.kakao_keyword_url,
+                params={"query": "대학교", "x": lng, "y": lat,
+                        "radius": TA_UNIV_RADIUS, "size": 1},
+                headers=headers, timeout=20,
+            )
             if r.status_code != 200:
                 return 0
             return int(((r.json() or {}).get("meta") or {}).get("total_count") or 0)
@@ -467,13 +470,12 @@ async def region_from_coord(location: Optional[Dict[str, float]]) -> str:
     if settings.effective_mock_mode() or not settings.kakao_rest_api_key:
         return ""
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                settings.kakao_coord2region_url,
-                params={"x": location["lng"], "y": location["lat"]},
-                headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
-                timeout=20,
-            )
+        resp = await shared_http.get_client().get(
+            settings.kakao_coord2region_url,
+            params={"x": location["lng"], "y": location["lat"]},
+            headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
+            timeout=20,
+        )
     except Exception as exc:
         logger.warning("Kakao 좌표→행정동 변환 실패: %s", exc)
         return ""
@@ -498,13 +500,12 @@ async def geocode(address: str) -> Optional[Dict[str, float]]:
     if settings.effective_mock_mode() or not settings.kakao_rest_api_key:
         return {"lat": 37.5665, "lng": 126.9780}
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                settings.kakao_address_url,
-                params={"query": address.strip(), "size": 1},
-                headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
-                timeout=20,
-            )
+        resp = await shared_http.get_client().get(
+            settings.kakao_address_url,
+            params={"query": address.strip(), "size": 1},
+            headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
+            timeout=20,
+        )
     except Exception as exc:
         logger.warning("Kakao 지오코딩 실패: %s", exc)
         return None

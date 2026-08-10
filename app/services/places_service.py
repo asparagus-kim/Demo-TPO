@@ -17,6 +17,7 @@ from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt,
 
 from ..config import get_settings
 from ..schemas import GooglePlaces, PlaceReview
+from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 
@@ -231,23 +232,23 @@ async def lookup_place(company_name: str, address: str) -> GooglePlaces:
         return GooglePlaces(place_name=None, formatted_address=None)
 
     query = f"{company_name} {address}".strip()
-    async with httpx.AsyncClient() as client:
-        _record_calls(1)                      # Text Search 1건
-        hit = await _text_search(client, query, settings.google_maps_api_key)
-        if not hit:
-            logger.info("No Places hit for %s", query)
-            empty = GooglePlaces(place_name=company_name, formatted_address=address)
-            cache[ck] = empty
-            return empty
+    client = shared_http.get_client()
+    _record_calls(1)                      # Text Search 1건
+    hit = await _text_search(client, query, settings.google_maps_api_key)
+    if not hit:
+        logger.info("No Places hit for %s", query)
+        empty = GooglePlaces(place_name=company_name, formatted_address=address)
+        cache[ck] = empty
+        return empty
 
-        place_id = hit.get("id")
-        details = None
-        if place_id:
-            _record_calls(1)                  # Place Details 1건
-            details = await _place_details(client, place_id, settings.google_maps_api_key)
-        if not details:
-            details = hit
-        places = _convert_place(details, settings.llm_review_cap)
+    place_id = hit.get("id")
+    details = None
+    if place_id:
+        _record_calls(1)                  # Place Details 1건
+        details = await _place_details(client, place_id, settings.google_maps_api_key)
+    if not details:
+        details = hit
+    places = _convert_place(details, settings.llm_review_cap)
     logger.info("Places 조회 완료 '%s' (리뷰 %d건, 영업시간 %d일, 오늘 호출 %d)",
                 places.place_name, len(places.reviews), len(places.business_hours), calls_today())
     cache[ck] = places
@@ -258,15 +259,14 @@ async def geocode(address: str) -> Optional[Dict[str, float]]:
     settings = get_settings()
     if settings.effective_mock_mode() or not settings.google_maps_api_key:
         return {"lat": 37.5665, "lng": 126.9780}
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await _retrying_request(
-                client, "GET", settings.geocode_url,
-                params={"address": address, "key": settings.google_maps_api_key, "language": "ko"},
-            )
-        except Exception as exc:
-            logger.warning("Geocode failed: %s", exc)
-            return None
+    try:
+        resp = await _retrying_request(
+            shared_http.get_client(), "GET", settings.geocode_url,
+            params={"address": address, "key": settings.google_maps_api_key, "language": "ko"},
+        )
+    except Exception as exc:
+        logger.warning("Geocode failed: %s", exc)
+        return None
     if resp.status_code != 200:
         logger.warning("Geocode %s: %s", resp.status_code, resp.text[:200])
         return None

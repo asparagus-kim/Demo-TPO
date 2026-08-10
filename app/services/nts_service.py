@@ -13,6 +13,7 @@ import httpx
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..config import get_settings
+from ..utils import http as shared_http
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -94,8 +95,8 @@ async def lookup_status(business_number: str) -> Dict[str, Optional[str]]:
         return _mock_status(digits)
 
     try:
-        async with httpx.AsyncClient() as client:
-            results = await _post_batch(client, settings.nts_api_url, settings.data_go_kr_api_key, [digits])
+        results = await _post_batch(shared_http.get_client(), settings.nts_api_url,
+                                    settings.data_go_kr_api_key, [digits])
     except Exception:
         # `message` 는 API 응답(debug.nts)에 실려 브라우저까지 간다. 예외 문자열을
         # 넣으면 httpx 예외에 담긴 요청 URL(= serviceKey 포함)이 노출되므로 고정 문구만

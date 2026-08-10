@@ -205,7 +205,29 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
     #   도로명('만리재로 193') → 동 정보 없음 / 지번('만리동1가') → **법정동**
     #   좌표→행정동('중림동')  → 정확히 매칭
     ta_service = trade_area_service.get_trade_area_service()
-    surround = await kakao_local_service.surroundings(chosen.location)
+
+    # 상권 집계(Kakao 9건) · Places 조회(Google 2건) · 날씨(KMA 1건)는 서로를 필요로
+    # 하지 않는다. 예전에는 순서대로 await 해서 세 왕복을 차례로 기다렸고 이 구간만
+    # 3~4초였다. 동시에 띄우면 가장 느린 하나(상권 집계)만큼만 걸린다.
+    #
+    # 날씨는 좌표만 있으면 되고 좌표는 Kakao가 canonical이므로 보통 여기 포함된다.
+    # `chosen.location` 이 없을 때만 Places 좌표에 의존하므로 그 경우는 뒤로 미룬다.
+    #
+    # These three stages are mutually independent; awaiting them in sequence cost
+    # 3–4s. Weather joins the fan-out whenever Kakao gave us coordinates, and only
+    # falls back to the Places coordinate (below) when it did not.
+    _weather_first = chosen.location is not None
+    _fanout = [
+        kakao_local_service.surroundings(chosen.location),
+        places_service.lookup_place(business_info.company_name, business_info.address),
+    ]
+    if _weather_first:
+        _fanout.append(weather_service.fetch_weather(chosen.location))
+
+    _fanned = await asyncio.gather(*_fanout)
+    surround, places_candidate = _fanned[0], _fanned[1]
+    weather_early = _fanned[2] if _weather_first else None
+
     trade_area_evidence = ""
 
     if surround and sum(surround["counts"].values()) > 0:
@@ -228,9 +250,7 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
     logger.info("trade_area: label=%s method=%s conf=%.2f", trade_area.label, trade_area.match_method, trade_area.confidence)
 
     # -------- Step 6: Google Places — 리뷰·영업시간만 (하이브리드 상위 경로)
-    places_candidate = await places_service.lookup_place(
-        business_info.company_name, business_info.address
-    )
+    # `places_candidate` 는 위 fan-out 에서 이미 받아 두었다.
     google_ok, google_skip = places_service.availability()
 
     # -------- Step 6.1: 동일 업체 검증 (Kakao 확정 정보 vs Google 후보)
@@ -333,10 +353,14 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
 
     # -------- Step 7: weather
     # 좌표는 Kakao가 canonical이다 (Google 후보가 다른 매장일 수 있으므로 먼저 쓰지 않는다).
-    location = (chosen.location
-                or places.location
-                or (await kakao_local_service.geocode(business_info.address)))
-    weather = await weather_service.fetch_weather(location)
+    # Kakao 좌표가 있었다면 위 fan-out 에서 이미 조회했다.
+    if weather_early is not None:
+        location = chosen.location
+        weather = weather_early
+    else:
+        location = (places.location
+                    or (await kakao_local_service.geocode(business_info.address)))
+        weather = await weather_service.fetch_weather(location)
 
     # -------- Step 7: LLM review scoring
     canonical_type = ambience_service.classify_business_type(business_info.business_type)

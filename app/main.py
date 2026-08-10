@@ -20,6 +20,7 @@ from . import __version__
 from .config import get_settings
 from .routers import analyse, health
 from .services import trade_area_service
+from .utils import http as shared_http
 from .utils.logging import configure_logging, get_logger
 
 settings = get_settings()
@@ -66,6 +67,12 @@ async def _startup() -> None:
         trade_area_service.get_trade_area_service().load()
     except Exception as exc:  # pragma: no cover
         logger.exception("Failed to preload trade-area dataset: %s", exc)
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    # 공유 httpx 연결 풀을 정리한다. 남겨 두면 종료 시 "Unclosed client" 경고가 난다.
+    await shared_http.aclose()
 
 
 @app.get("/", response_class=HTMLResponse)

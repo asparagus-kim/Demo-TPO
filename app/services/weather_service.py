@@ -20,6 +20,7 @@ from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt,
 
 from ..config import get_settings
 from ..schemas import Weather
+from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 
@@ -153,8 +154,8 @@ async def fetch_weather(location: Optional[Dict[str, float]]) -> Weather:
     grid = lat_lng_to_grid(location["lat"], location["lng"])
     slot = _nearest_ncst_timeslot()
     try:
-        async with httpx.AsyncClient() as client:
-            payload = await _fetch(client, slot["base_date"], slot["base_time"], grid["nx"], grid["ny"])
+        payload = await _fetch(shared_http.get_client(), slot["base_date"],
+                               slot["base_time"], grid["nx"], grid["ny"])
     except Exception as exc:
         logger.exception("KMA fetch failed: %s", exc)
         payload = None
