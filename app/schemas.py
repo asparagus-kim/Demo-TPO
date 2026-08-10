@@ -212,6 +212,8 @@ class AnalyseResponse(BaseModel):
     evidence_provenance: EvidenceProvenance = Field(default_factory=EvidenceProvenance)
     web_evidence: List[WebEvidenceItem] = Field(default_factory=list)
     music: MusicRecommendation = Field(default_factory=MusicRecommendation)
+    # 확정된 Kakao 매장 그대로 — 프론트 지도 표시·카카오맵 딥링크(place_url·location)용.
+    resolved_place: Optional[PlaceCandidate] = None
     needs_input: Optional[NeedsInput] = None
     debug: Dict[str, Any] = Field(default_factory=dict)
     error: Optional[str] = None

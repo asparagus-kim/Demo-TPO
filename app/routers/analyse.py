@@ -482,6 +482,7 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
         evidence_provenance=provenance,
         web_evidence=web_evidence,
         music=music,
+        resolved_place=chosen,
         debug={
             "identity_source": identity.source,
             "identity_confidence": identity.confidence,
