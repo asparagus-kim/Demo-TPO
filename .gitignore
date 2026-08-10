@@ -19,10 +19,16 @@ logs/
 cache/
 *.log
 
-# node — frontend/ and backend/ both carry their own dependency trees (~440MB)
+# node — frontend/, backend/ and client/ each carry their own dependency trees (~440MB)
 node_modules/
 frontend
 backend
+# client/ 는 Framer 디자인 시스템 프로토타이핑용 샌드박스다. frontend/ 처럼 자체 git
+# 저장소를 두고, 정리되면 frontend/ 로 옮긴다. 여기서 무시하지 않으면 부모 저장소가
+# gitlink(유령 서브모듈)를 기록해 버린다.
+# Sandbox for prototyping the Framer design system; carries its own git repo like
+# frontend/. Ignored here so a parent-level `git add -A` cannot record a gitlink.
+client
 *.tsbuildinfo
 
 # tooling scratch — MCP browser captures and generated report artefacts
