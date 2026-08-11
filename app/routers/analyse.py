@@ -22,6 +22,7 @@ import asyncio
 import hashlib
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Optional
 
@@ -218,7 +219,9 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
     # falls back to the Places coordinate (below) when it did not.
     _weather_first = chosen.location is not None
     _fanout = [
-        kakao_local_service.surroundings(chosen.location),
+        kakao_local_service.surroundings(
+            chosen.location, own_code=chosen.category_group_code
+        ),
         places_service.lookup_place(business_info.company_name, business_info.address),
     ]
     if _weather_first:
@@ -239,6 +242,13 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
             matched_address=business_info.address,
             match_method="surroundings",
             confidence=round(ta_conf, 2),
+            # '분석 근거' 10줄 템플릿용 원본 수치 + 판정 기준 트레이스.
+            surroundings=trade_area_service.surroundings_payload(
+                profile,
+                own_code=str(surround.get("own_code") or chosen.category_group_code or ""),
+                own_count=surround.get("own_count"),
+            ),
+            criteria=trade_area_service.criteria_trace(profile),
         )
         logger.info("상권 판정(주변분포): %s — %s | %s", label, why, trade_area_evidence)
     else:
@@ -433,6 +443,18 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
             f"Google이 영업시간을 제공하지 않아 웹 검색으로 {len(recovered_hours)}건을 보강했습니다."
         )
 
+    # '분석 근거' 템플릿 슬롯 1-2: 리뷰 코퍼스에서 LLM이 뽑은 키워드의 언급 빈도.
+    # 키워드는 리뷰당 최대 5개로 중복 제거되어 있으므로 count ≈ 언급 리뷰 수.
+    keyword_counter = Counter(
+        kw.strip()
+        for rs in review_scores
+        for kw in (rs.keywords or [])
+        if kw and kw.strip()
+    )
+    review_keywords = [
+        {"keyword": k, "count": n} for k, n in keyword_counter.most_common(5)
+    ]
+
     provenance = EvidenceProvenance(
         text_source=text_source,
         google_used=text_source in {"google_reviews", "mixed"},
@@ -441,6 +463,8 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
         google_review_count=len(places.reviews) if validation.is_consistent else 0,
         web_evidence_count=len(web_evidence),
         notes=provenance_notes,
+        review_keywords=review_keywords,
+        reviews_analyzed=len(review_scores),
     )
 
     # Append a short, user-facing line to the ambience explanation list so the

@@ -387,12 +387,18 @@ def _grid_key(location: Dict[str, float], meters: int = 500) -> str:
     return f"{round(location['lat'] / step)}:{round(location['lng'] / step)}"
 
 
-async def surroundings(location: Optional[Dict[str, float]]) -> Optional[Dict[str, Any]]:
+async def surroundings(
+    location: Optional[Dict[str, float]], own_code: str = ""
+) -> Optional[Dict[str, Any]]:
     """반경 내 업종 개수 + 대학 근접도를 집계한다. 상권 판정의 입력.
 
     카테고리별로 `size=1` 로 호출해 **개수(`meta.total_count`)만** 읽는다 —
     문서 목록은 받지 않으므로 응답이 작다. 카테고리 8종 + 대학 키워드 1회 = 9호출.
     Kakao 무료 쿼터가 일 10만이라 부담이 없고, 500m 격자 캐시로 더 줄인다.
+
+    `own_code`(매장의 category_group_code)가 주어지면 같은 업종 개수를
+    `own_count`로 함께 돌려준다. 집계 8종에 포함된 코드면 추가 호출 없이
+    counts에서 읽고, 아니면 1회만 더 부른다(별도 캐시).
     """
     settings = get_settings()
     if not location or location.get("lat") is None or location.get("lng") is None:
@@ -401,10 +407,8 @@ async def surroundings(location: Optional[Dict[str, float]]) -> Optional[Dict[st
         return None
 
     cache = get_cache("places")
-    ck = "surround:" + _grid_key(location)
-    if ck in cache:
-        logger.info("주변 상권 집계 캐시 히트 (%s)", ck)
-        return cache[ck]
+    gk = _grid_key(location)
+    ck = "surround:" + gk
 
     lat, lng = location["lat"], location["lng"]
     headers = {"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"}
@@ -441,16 +445,38 @@ async def surroundings(location: Optional[Dict[str, float]]) -> Optional[Dict[st
         except Exception:
             return 0
 
-    results = await asyncio.gather(
-        *[one_category(c) for c in TA_GROUPS], univ_count(),
-    )
-    counts = dict(results[:-1])
-    out = {"counts": counts, "univ": results[-1], "radius": TA_RADIUS}
-    total = sum(counts.values())
-    logger.info("주변 상권 집계: 총 %d곳, 대학 %d (반경 %dm)", total, out["univ"], TA_RADIUS)
-    if total > 0:
-        cache[ck] = out
-    return out
+    if ck in cache:
+        logger.info("주변 상권 집계 캐시 히트 (%s)", ck)
+        base = cache[ck]
+    else:
+        results = await asyncio.gather(
+            *[one_category(c) for c in TA_GROUPS], univ_count(),
+        )
+        counts = dict(results[:-1])
+        base = {"counts": counts, "univ": results[-1], "radius": TA_RADIUS}
+        total = sum(counts.values())
+        logger.info("주변 상권 집계: 총 %d곳, 대학 %d (반경 %dm)",
+                    total, base["univ"], TA_RADIUS)
+        if total > 0:
+            cache[ck] = base
+
+    if not own_code:
+        return base
+    if own_code in TA_GROUPS:
+        own_count = int(base["counts"].get(own_code, 0) or 0)
+    else:
+        ock = f"surround-own:{gk}:{own_code}"
+        if ock in cache:
+            own_count = cache[ock]
+        else:
+            _, own_count = await one_category(own_code)
+            # 매장 자신이 반경 안에 있으므로 정상 응답은 항상 1 이상이다.
+            # 0 은 호출 실패(one_category 가 예외를 삼키고 0 을 준다)이므로 캐시하지
+            # 않는다 — 집계 쪽 `if total > 0` 가드와 같은 이유다.
+            if own_count > 0:
+                cache[ock] = own_count
+    # base(캐시 공유 객체)는 건드리지 않고 사본에 own 정보를 붙인다.
+    return {**base, "own_code": own_code, "own_count": own_count}
 
 
 async def region_from_coord(location: Optional[Dict[str, float]]) -> str:

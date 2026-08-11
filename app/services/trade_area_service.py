@@ -178,6 +178,116 @@ def evidence_text(p: SurroundingProfile) -> str:
     return (f"반경 {SURROUND_RADIUS_M}m 내 카페 {c['CE7']} · 음식점 {c['FD6']} · "
             f"학원 {c['AC5']} · 은행 {c['BK9']} · 숙박 {c['AD5']} · 병원 {c['HP8']}")
 
+
+def density_word(total: int) -> str:
+    """상업 밀도 구간 → 사람이 읽는 말. classify 규칙의 임계값과 같은 상수를 쓴다."""
+    if total < LOW_DENSITY:
+        return "낮음"
+    if total < MID_DENSITY:
+        return "보통"
+    return "높음"
+
+
+def criteria_trace(p: SurroundingProfile) -> List[Dict[str, object]]:
+    """판정에 쓰인 판별 기준들을 지표별로 평가해 그대로 노출한다.
+
+    `classify_by_surroundings`와 **같은 상수·같은 조건**을 쓴다(하드코딩 금지).
+    2단계 임계값이 있는 지표(관광 12/5, 카페 20/16)는 기본으로 1차 기준을 보여주되,
+    최종 판정이 2차 기준에서 났으면 그 기준으로 바꿔 보여준다 — 화면 문구가
+    실제 판정과 어긋나지 않게 하기 위해서다.
+    """
+    label, _, _ = classify_by_surroundings(p)
+
+    tour_secondary = label == "관광특구 상권" and p.tour_pct < 12
+    cafe_secondary = label == LABEL_CAFE_TREND and not (
+        p.cafe_pct >= 20 and p.cafe_bank_ratio >= 8
+    )
+
+    entries: List[Dict[str, object]] = [
+        {
+            "indicator": "반경 1km 내 대학 관련 장소",
+            "value": f"{p.univ_count}곳",
+            "threshold": f"{UNIV_THRESHOLD}곳 이상",
+            "label": "대학가/유흥 상권",
+            "met": p.univ_count >= UNIV_THRESHOLD,
+        },
+        {
+            "indicator": "숙박·관광명소 비중",
+            "value": f"{p.tour_pct:.1f}%",
+            "threshold": "5% 이상" if tour_secondary else "12% 이상",
+            "label": "관광특구 상권",
+            "met": p.tour_pct >= (5 if tour_secondary else 12),
+        },
+        {
+            "indicator": "학원 비중",
+            "value": f"{p.edu_pct:.1f}%",
+            "threshold": f"22% 이상 (상업시설 {LOW_DENSITY}곳 이상)",
+            "label": "학원가 특화 상권",
+            "met": p.edu_pct >= 22 and p.total >= LOW_DENSITY,
+        },
+        {
+            "indicator": "카페 비중",
+            "value": f"{p.cafe_pct:.1f}% (은행 대비 {p.cafe_bank_ratio:.0f}배)",
+            "threshold": ("16% 이상 · 은행 대비 5배" if cafe_secondary
+                          else "20% 이상 · 은행 대비 8배"),
+            "label": LABEL_CAFE_TREND,
+            "met": (p.cafe_pct >= 16 and p.cafe_bank_ratio >= 5) if cafe_secondary
+            else (p.cafe_pct >= 20 and p.cafe_bank_ratio >= 8),
+        },
+        {
+            "indicator": "은행 비중",
+            "value": f"{p.bank_pct:.1f}%",
+            "threshold": "5% 이상",
+            "label": "오피스 밀집 상권",
+            "met": p.bank_pct >= 5,
+        },
+        {
+            "indicator": "상업 밀도",
+            "value": f"{p.total}곳",
+            "threshold": f"{MID_DENSITY}곳 미만",
+            "label": "주거 밀집 상권",
+            "met": p.total < MID_DENSITY,
+        },
+    ]
+
+    # classify의 캐스케이드 순서상 최종 레이블을 만든 기준에 decided 표시.
+    decided_done = False
+    for e in entries:
+        e["decided"] = bool(not decided_done and e["met"] and e["label"] == label)
+        if e["decided"]:
+            decided_done = True
+    return entries
+
+
+def surroundings_payload(
+    p: SurroundingProfile,
+    own_code: str = "",
+    own_count: Optional[int] = None,
+) -> Dict[str, object]:
+    """SurroundingProfile → API 응답용 dict (`TradeAreaSurroundings` 필드와 1:1)."""
+    own_pct = (
+        round(own_count / p.total * 100.0, 1)
+        if own_count is not None and p.total > 0
+        else None
+    )
+    return {
+        "radius_m": SURROUND_RADIUS_M,
+        "total": p.total,
+        "counts": dict(p.counts),
+        "cafe_pct": round(p.cafe_pct, 1),
+        "food_pct": round(p.food_pct, 1),
+        "edu_pct": round(p.edu_pct, 1),
+        "bank_pct": round(p.bank_pct, 1),
+        "tour_pct": round(p.tour_pct, 1),
+        "hospital_pct": round(p.hospital_pct, 1),
+        "cafe_bank_ratio": round(p.cafe_bank_ratio, 1),
+        "univ_count": p.univ_count,
+        "density": density_word(p.total),
+        "own_code": own_code or "",
+        "own_count": own_count,
+        "own_pct": own_pct,
+    }
+
 _DATASET_COLUMNS = {
     "code": ["행정동코드", "코드", "법정동코드"],
     "name": ["행정동", "행정동명", "읍면동명", "동명"],

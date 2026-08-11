@@ -85,11 +85,46 @@ class NeedsInput(BaseModel):
     place_candidates: List[PlaceCandidate] = Field(default_factory=list)
 
 
+class TradeAreaSurroundings(BaseModel):
+    """반경 내 업종 집계 원본 수치 — '분석 근거' 10줄 템플릿의 데이터 바인딩용.
+
+    주변 분포 방식(match_method="surroundings")일 때만 채워진다.
+    엑셀 폴백/구버전 캐시 응답에는 없다(None).
+    """
+    radius_m: int = 500
+    total: int = 0
+    counts: Dict[str, int] = Field(default_factory=dict)  # category_group_code → 개수
+    cafe_pct: float = 0.0
+    food_pct: float = 0.0
+    edu_pct: float = 0.0
+    bank_pct: float = 0.0
+    tour_pct: float = 0.0
+    hospital_pct: float = 0.0
+    cafe_bank_ratio: float = 0.0
+    univ_count: int = 0                  # 반경 1km 내 '대학교' 키워드 장소 수
+    density: str = "낮음"                # "낮음" | "보통" | "높음"
+    own_code: str = ""                   # 매장의 category_group_code
+    own_count: Optional[int] = None      # 같은 업종 개수 (집계 불가 시 None)
+    own_pct: Optional[float] = None
+
+
+class TradeAreaCriterion(BaseModel):
+    """상권 판정에 실제 사용된 판별 기준 1건. 하드코딩 없이 분류 로직에서 도출한다."""
+    indicator: str = ""    # 예: "은행 비중"
+    value: str = ""        # 사람이 읽는 값. 예: "4.9%"
+    threshold: str = ""    # 예: "5% 이상"
+    label: str = ""        # 이 기준이 가리키는 상권 유형
+    met: bool = False      # 기준 충족(부합) 여부
+    decided: bool = False  # 이 기준이 최종 판정을 결정했는지
+
+
 class TradeAreaMatch(BaseModel):
     label: str = "주거 밀집 상권"
     matched_address: Optional[str] = None
     match_method: str = "fallback"
     confidence: float = 0.0
+    surroundings: Optional[TradeAreaSurroundings] = None
+    criteria: List[TradeAreaCriterion] = Field(default_factory=list)
 
 
 class PlaceReview(BaseModel):
@@ -133,6 +168,12 @@ class WebEvidenceItem(BaseModel):
     source: Optional[str] = None  # e.g. "naver_blog", "tistory", "instagram", "search_snippet"
 
 
+class ReviewKeywordMention(BaseModel):
+    """분석된 리뷰 텍스트에서 LLM이 뽑은 키워드의 언급 빈도."""
+    keyword: str = ""
+    count: int = 0
+
+
 class EvidenceProvenance(BaseModel):
     """Tells the UI/debug where the ambience text-evidence actually came from."""
     text_source: str = "none"   # "google_reviews" | "web_search" | "mixed" | "none"
@@ -142,6 +183,9 @@ class EvidenceProvenance(BaseModel):
     google_review_count: int = 0
     web_evidence_count: int = 0
     notes: List[str] = Field(default_factory=list)
+    # '분석 근거' 템플릿 슬롯 1-2용. 리뷰 코퍼스 전체에서 집계한 상위 키워드.
+    review_keywords: List[ReviewKeywordMention] = Field(default_factory=list)
+    reviews_analyzed: int = 0           # LLM이 실제 점수화한 리뷰 수
 
 
 class Weather(BaseModel):
