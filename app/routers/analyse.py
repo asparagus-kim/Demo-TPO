@@ -539,6 +539,9 @@ async def analyse(
             "music_track_count": len(music.tracks),
             "llm_prompt_version": settings.prompt_version,
             "reviews_used": len(review_scores),
+            # LLM 이 실제로 돌았는지, 몇 번 시도했는지, 몇 ms 걸렸는지. 실패해도
+            # 휴리스틱으로 success:true 가 나가므로 이게 없으면 느린 분석의 원인을 못 가른다.
+            "llm": llm_service.last_call_stats(),
             "google_review_count_raw": len(places_candidate.reviews or []),
             "web_evidence_count": len(web_evidence),
             "text_source": text_source,

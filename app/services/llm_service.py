@@ -17,7 +17,8 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass, replace as dc_replace
+import contextvars
+from dataclasses import asdict, dataclass, replace as dc_replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -79,6 +80,34 @@ LLM_OUTPUT_TOKENS_PER_REVIEW = 110
 LLM_OUTPUT_TOKENS_BASE = 64
 # OTPM 1000 ÷ ~83 ≈ 12. 이 위로는 한 요청이 분당 한도를 혼자 다 쓴다.
 LLM_BATCH_HARD_CAP = 12
+
+
+@dataclass
+class LlmCallStats:
+    """분석 1건의 LLM 호출 결과. 라우터가 `debug.llm` 으로 그대로 노출한다.
+
+    왜 필요한가: `score_reviews` 는 실패하면 조용히 휴리스틱으로 떨어져 `success: true`
+    로 나간다. 그래서 (1) 모델이 폐기된 채 한 달을 몰랐고, (2) 2026-09-15 프로덕션에서
+    같은 코드·같은 인스턴스에서 19초와 3초가 30초 간격으로 나왔을 때 Groq 가 늦은 건지
+    429 로 재시도 체인을 다 탄 건지 응답만 보고는 구분할 수 없었다.
+    """
+    status: str = "skipped"      # ok | cached | rate_limited | failed | skipped
+    attempts: int = 0
+    latency_ms: int = 0
+    batch_size: int = 0          # 실제로 LLM 에 보낸 리뷰 수
+    cache_hits: int = 0
+    model: str = ""
+
+
+# 요청 범위(asyncio task) 로 격리된다 — --workers 1 에서 요청이 겹쳐도 섞이지 않는다.
+_last_stats: contextvars.ContextVar[Optional[LlmCallStats]] = contextvars.ContextVar(
+    "llm_last_stats", default=None)
+
+
+def last_call_stats() -> Optional[Dict[str, Any]]:
+    """직전 `score_reviews` 의 LLM 호출 통계 (같은 요청 안에서만 의미 있다)."""
+    st = _last_stats.get()
+    return asdict(st) if st else None
 
 
 def _evidence_lang_label(lang: str = "ko") -> str:  # noqa: ARG001 — 한국어 고정
@@ -153,12 +182,37 @@ def compute_weight(review: PlaceReview) -> float:
 # 짧게 두 번만 더 시도한다 — 분석 1건이 30초를 넘기면 사용자가 떠난다.
 LLM_MAX_ATTEMPTS = 3
 LLM_RETRY_BASE_SEC = 1.5
+# 재시도로 기다려 줄 수 있는 총 시간. Groq 가 "try again in 30s" 라고 하면 30초를
+# 기다리는 것보다 휴리스틱으로 바로 내려가는 쪽이 데모에서는 낫다.
+LLM_RETRY_MAX_SEC = 8.0
 
 _llm_client = None
 
 
 def _is_rate_limited(exc: Exception) -> bool:
     return getattr(exc, "status_code", None) == 429 or "429" in str(exc)
+
+
+def _retry_delay(exc: Exception, attempt: int) -> float:
+    """다음 재시도까지 기다릴 초. **서버가 알려준 Retry-After 를 우선**한다.
+
+    2026-09-15 실측: Groq 429 는 `retry-after: 6` 을 준다. 예전 백오프(1.5s → 3s)는
+    둘 다 6초보다 짧아서 **재시도가 한 번도 성공할 수 없었다** — 4.5초를 태우고
+    결국 휴리스틱. 헤더가 없으면 본문의 "try again in N.Ns" 를, 그것도 없으면 백오프.
+    """
+    hinted = 0.0
+    headers = getattr(getattr(exc, "response", None), "headers", None)
+    if headers:
+        try:
+            hinted = float(headers.get("retry-after") or 0)
+        except (TypeError, ValueError):
+            hinted = 0.0
+    if not hinted:
+        m = re.search(r"try again in (\d+(?:\.\d+)?)\s*s", str(exc))
+        if m:
+            hinted = float(m.group(1))
+    base = LLM_RETRY_BASE_SEC * (2 ** attempt)
+    return max(hinted, base) + 0.2   # 창이 열리는 경계에서 다시 429 를 맞지 않게 살짝 여유
 
 
 def _get_llm_client():
@@ -298,6 +352,7 @@ async def _score_batch(
     weather_summary: str,
     business_hours: str,
     lang: str = "ko",
+    stats: Optional[LlmCallStats] = None,
 ) -> Optional[List[Optional[ReviewScore]]]:
     """리뷰 N건을 LLM 요청 1번으로 채점한다. `texts` 와 같은 순서·길이의 리스트를 돌려주고,
     모델이 빠뜨린 항목은 None 으로 남긴다(호출자가 휴리스틱으로 채운다).
@@ -320,8 +375,17 @@ async def _score_batch(
     )
     max_tokens = LLM_OUTPUT_TOKENS_BASE + LLM_OUTPUT_TOKENS_PER_REVIEW * len(texts)
 
+    st = stats or LlmCallStats()
+    t_start = asyncio.get_running_loop().time()
+
+    def _done(status: str) -> None:
+        st.status = status
+        st.latency_ms = int((asyncio.get_running_loop().time() - t_start) * 1000)
+
     resp = None
+    waited = 0.0
     for attempt in range(LLM_MAX_ATTEMPTS):
+        st.attempts = attempt + 1
         try:
             resp = await client.chat.completions.create(
                 model=settings.openai_model,
@@ -339,15 +403,23 @@ async def _score_batch(
             # 묶음이라 요청은 1번이지만, 직전 분석과 같은 분(minute) 안이면 OTPM 이 남아
             # 있지 않을 수 있다. 429 만 짧게 재시도하고, 그래도 안 되면 휴리스틱으로.
             if _is_rate_limited(exc) and attempt < LLM_MAX_ATTEMPTS - 1:
-                delay = LLM_RETRY_BASE_SEC * (2 ** attempt)
+                delay = _retry_delay(exc, attempt)
+                if waited + delay > LLM_RETRY_MAX_SEC:
+                    logger.warning("LLM rate-limited (%s) — 요구 대기 %.1fs 가 예산 %.0fs 를 넘어 즉시 휴리스틱으로",
+                                   settings.openai_model, delay, LLM_RETRY_MAX_SEC)
+                    _done("rate_limited")
+                    return None
                 logger.warning("LLM rate-limited (%s) — %.1fs 후 재시도 %d/%d",
                                settings.openai_model, delay, attempt + 1, LLM_MAX_ATTEMPTS - 1)
                 await asyncio.sleep(delay)
+                waited += delay
                 continue
             logger.warning("LLM call failed (%s @ %s): %s", settings.openai_model,
                            settings.openai_base_url or "openai-default", exc)
+            _done("rate_limited" if _is_rate_limited(exc) else "failed")
             return None
     if resp is None:
+        _done("failed")
         return None
 
     content = (resp.choices[0].message.content or "").strip()
@@ -355,12 +427,15 @@ async def _score_batch(
         payload = json.loads(content)
     except json.JSONDecodeError:
         logger.warning("LLM returned non-JSON: %s", content[:200])
+        _done("failed")
         return None
 
     items = payload.get("scores") if isinstance(payload, dict) else None
     if not isinstance(items, list):
         logger.warning("LLM batch payload has no 'scores' list: %s", content[:200])
+        _done("failed")
         return None
+    _done("ok")
 
     out: List[Optional[ReviewScore]] = [None] * len(texts)
     for pos, item in enumerate(items):
@@ -405,6 +480,7 @@ async def score_reviews(
     logger.info("score_reviews: n=%d use_llm=%s (batched)", len(selected), use_llm)
 
     results: List[Optional[ReviewScore]] = [None] * len(selected)
+    stats = LlmCallStats(model=settings.openai_model)
 
     if use_llm:
         cache = get_cache("llm")
@@ -415,6 +491,10 @@ async def score_reviews(
         for i, k in enumerate(keys):
             if k in cache:
                 results[i] = cache[k]
+        stats.cache_hits = len(selected) - len(misses)
+        stats.batch_size = len(misses)
+        if not misses:
+            stats.status = "cached"
 
         if misses:
             batch = await _score_batch(
@@ -424,6 +504,7 @@ async def score_reviews(
                 weather_summary=weather_summary,
                 business_hours=business_hours,
                 lang=lang,
+                stats=stats,
             )
             if batch:
                 for j, i in enumerate(misses):
@@ -432,6 +513,7 @@ async def score_reviews(
                         results[i] = score
                         cache[keys[i]] = score
 
+    _last_stats.set(stats)
     out: List[ReviewScore] = []
     for i, review in enumerate(selected):
         score = results[i] or _heuristic_score(review)
