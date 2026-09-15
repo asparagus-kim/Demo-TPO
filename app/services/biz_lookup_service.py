@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -45,8 +45,24 @@ SOURCE_BIZNO = "bizno"
 SOURCE_MOCK = "mock"
 SOURCE_NONE = "none"
 
+# bizno 조회 실패 사유. 사용자 문구와 `debug.biz_lookup_error` 가 이걸로 갈린다.
+ERR_NO_KEY = "no_key"
+ERR_QUOTA = "quota_exceeded"      # resultCode -3 — 무료 플랜 200건/일 소진
+ERR_HTTP = "http_error"
+ERR_REQUEST = "request_failed"
+ERR_NOT_FOUND = "not_found"       # 조회는 됐고 해당 번호가 없다
+
+# 한도 초과·장애는 '번호를 못 찾음'과 전혀 다른 사건이다. 같은 문구로 묶으면
+# 모든 번호가 조회 실패로 보여 입력값을 의심하게 된다(2026-09-15 실측: 한도가
+# 소진되자 전체 분석이 이 화면으로 떨어졌는데 문구는 번호 탓을 하고 있었다).
+_UNAVAILABLE_ERRORS = frozenset({ERR_NO_KEY, ERR_QUOTA, ERR_HTTP, ERR_REQUEST})
+
 MSG_NEED_NAME = (
     "사업자등록번호로 상호명을 찾지 못했습니다. 매장 상호명을 입력해 주세요."
+)
+MSG_LOOKUP_UNAVAILABLE = (
+    "사업자 정보 조회 서비스를 일시적으로 사용할 수 없습니다. "
+    "매장 상호명을 직접 입력하시면 분석을 계속합니다."
 )
 
 
@@ -92,15 +108,16 @@ def parse_bizno_payload(payload: Dict[str, Any]) -> Optional[Dict[str, str]]:
     }
 
 
-async def _lookup_bizno(digits: str) -> Optional[Dict[str, str]]:
+async def _lookup_bizno(digits: str) -> Tuple[Optional[Dict[str, str]], str]:
+    """(조회 결과, 실패 사유). 성공하면 사유는 빈 문자열이다."""
     settings = get_settings()
     if not settings.bizno_api_key:
-        return None
+        return None, ERR_NO_KEY
 
     cache = get_cache("bizno")
     if digits in cache:
         logger.info("bizno cache hit for %s", digits)
-        return cache[digits]
+        return cache[digits], ""
 
     params = {"key": settings.bizno_api_key, "q": digits, "type": "json"}
     async with _bizno_lock:
@@ -109,21 +126,30 @@ async def _lookup_bizno(digits: str) -> Optional[Dict[str, str]]:
                 settings.bizno_api_url, params=params, timeout=20)
         except Exception as exc:
             logger.warning("bizno 호출 실패: %s", exc)
-            return None
+            return None, ERR_REQUEST
         await asyncio.sleep(_BIZNO_GAP_SEC)
 
     if resp.status_code != 200:
         logger.warning("bizno HTTP %s: %s", resp.status_code, resp.text[:160])
-        return None
+        return None, ERR_HTTP
     try:
-        parsed = parse_bizno_payload(resp.json() or {})
+        payload = resp.json() or {}
     except ValueError:
         logger.warning("bizno JSON 파싱 실패: %s", resp.text[:160])
-        return None
+        return None, ERR_HTTP
 
+    # 한도 초과는 개별 번호의 문제가 아니라 전면 중단이다 — WARNING 으로는
+    # 다른 조회 실패에 묻히므로 ERROR 로 올려 로그에서 바로 보이게 한다.
+    if payload.get("resultCode") in (-3, "-3"):
+        logger.error("bizno 일일 조회 한도 초과 — 모든 상호명 조회가 실패한다: %s",
+                     payload.get("resultMsg"))
+        return None, ERR_QUOTA
+
+    parsed = parse_bizno_payload(payload)
     if parsed and parsed.get("company_name"):
         cache[digits] = parsed
-    return parsed
+        return parsed, ""
+    return None, ERR_NOT_FOUND
 
 
 # ---------------------------------------------------------------- mock
@@ -170,7 +196,7 @@ async def resolve_identity(
         return _mock_identity(digits)
 
     # 1) bizno
-    parsed = await _lookup_bizno(digits)
+    parsed, lookup_error = await _lookup_bizno(digits)
     if parsed and parsed.get("company_name"):
         logger.info("biz_lookup: bizno hit '%s' (%s)",
                     parsed["company_name"], parsed.get("status"))
@@ -185,13 +211,17 @@ async def resolve_identity(
             message=f"사업자등록 상호명: {parsed['company_name']}",
         )
 
-    # 2) 실패 → 사용자 입력 요청
-    logger.info("biz_lookup: 상호명 확보 실패 (%s) — 사용자 입력 필요", digits)
+    # 2) 실패 → 사용자 입력 요청. 어느 쪽이든 상호명을 직접 받으면 분석은 이어지지만,
+    #    문구는 원인을 정직하게 말해야 한다(번호 탓 vs 조회 서비스 탓).
+    logger.info("biz_lookup: 상호명 확보 실패 (%s, %s) — 사용자 입력 필요",
+                digits, lookup_error)
     return BizIdentity(
         source=SOURCE_NONE,
         confidence=0.0,
         needs_user_input=True,
-        message=MSG_NEED_NAME,
+        lookup_error=lookup_error,
+        message=(MSG_LOOKUP_UNAVAILABLE if lookup_error in _UNAVAILABLE_ERRORS
+                 else MSG_NEED_NAME),
     )
 
 

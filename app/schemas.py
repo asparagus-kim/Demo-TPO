@@ -57,6 +57,9 @@ class BizIdentity(BaseModel):
     tax_type: str = ""
     candidates: List[BizCandidate] = Field(default_factory=list)
     needs_user_input: bool = False
+    # 왜 상호명을 못 얻었는지 (biz_lookup_service.ERR_*). 빈 값이면 실패가 아니다.
+    # 한도 초과/장애를 '번호 없음'과 구분해 문구와 debug 에 싣는 근거.
+    lookup_error: str = ""
     message: str = ""
 
 

@@ -182,6 +182,9 @@ async def analyse(
                     biz_candidates=identity.candidates,
                 ),
                 debug={"nts": nts, "identity_source": identity.source,
+                       # 전 번호가 이 화면으로 떨어질 때 원인을 응답 하나로 가른다:
+                       # quota_exceeded/http_error = 조회 서비스 장애, not_found = 번호.
+                       "biz_lookup_error": identity.lookup_error,
                        "llm_prompt_version": settings.prompt_version, "reviews_used": 0},
             ), "needs_input")
 
