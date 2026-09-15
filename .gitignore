@@ -92,3 +92,5 @@ image.png
 
 # 로컬 .env 백업 — 실제 키가 들어있다
 .env.bak.*
+
+.vercel
