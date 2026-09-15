@@ -360,7 +360,8 @@ async def fetch_rows(limit: int = 200) -> Dict[str, Any]:
     """
     settings = get_settings()
     if not settings.sheets_webhook_url:
-        return {"columns": list(COLUMNS), "rows": [], "available": False}
+        return {"columns": list(COLUMNS), "rows": [], "available": False,
+                "reason": "not_configured"}
 
     # Apps Script 는 302 로 script.googleusercontent.com 에 넘기므로 왕복이 두 번이다.
     # 로컬에선 2~4초지만 Render(싱가포르·무료 플랜)에서는 이를 넘겨 간헐적으로
@@ -385,10 +386,12 @@ async def fetch_rows(limit: int = 200) -> Dict[str, Any]:
     if data is None:
         logger.warning("sheets read failed after %d attempts: %s",
                        READ_MAX_ATTEMPTS, last_error)
-        return {"columns": list(COLUMNS), "rows": [], "available": False}
+        return {"columns": list(COLUMNS), "rows": [], "available": False,
+                "reason": "read_failed", "error": last_error}
 
     return {
         "columns": data.get("columns") or list(COLUMNS),
         "rows": data.get("rows") or [],
         "available": True,
+        "reason": "ok",
     }
