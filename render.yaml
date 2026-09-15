@@ -70,6 +70,18 @@ services:
       - key: OPENAI_MODEL
         value: qwen/qwen3.8-27b
 
+      # ---- 분석 수집 (Analysis Data Collection) ------------------------------
+      # Apps Script 웹훅. 둘 다 Dashboard 에서 채운다.
+      # **반드시 여기 선언해 두어야 한다** — Blueprint 서비스는 render.yaml 에
+      # 없는 Dashboard 전용 변수를 sync 때 정리해 버릴 수 있다. 실제로 값을
+      # 넣었는데도 `available: false` 로 나온 원인이 이것이었다(2026-09-15).
+      #
+      # 비워 두면 수집 기능 전체가 조용히 꺼진다(분석은 정상 동작).
+      - key: SHEETS_WEBHOOK_URL
+        sync: false
+      - key: SHEETS_WEBHOOK_TOKEN
+        sync: false
+
       # ---- Runtime tuning --------------------------------------------------
       - key: MOCK_MODE
         value: "0"
