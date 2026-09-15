@@ -263,11 +263,24 @@ def reset_llm_client() -> None:
     _llm_client = None
 
 
-def warm_llm_client() -> bool:
-    """시작 시 클라이언트를 미리 만든다. AsyncOpenAI 생성(SSL 컨텍스트 등)이 첫 분석에서
-    ~0.5초를 먹었다 — debug.timings_ms 의 llm 단계(1719ms)와 debug.llm.latency_ms(1239ms)
-    의 차이로 드러났다(2026-09-15). TLS 자체는 utils/http.warm_hosts 가 연다."""
-    return _get_llm_client() is not None
+async def warm_llm_client(timeout: float = 8.0) -> bool:
+    """시작 시 LLM 클라이언트를 만들고 **그 클라이언트의 연결 풀**로 요청 1번을 보낸다.
+
+    두 비용이 첫 분석에 몰려 있었다(2026-09-15 실측):
+      1) AsyncOpenAI 객체 생성 ~0.5초 (llm 단계 1719ms vs 실제 호출 1239ms)
+      2) SDK 자체 httpx 풀의 콜드 TLS — Render 첫 요청의 Groq 호출이 5.5~7.3초, 그 다음은 1.6초.
+         utils/http.warm_hosts 가 api.groq.com 을 열어 두지만 그건 **공유 풀**이고 SDK 는
+         자기 풀을 쓴다. 그래서 여기서 models.list() (GET, 토큰 0) 로 SDK 풀을 직접 데운다.
+    """
+    client = _get_llm_client()
+    if client is None:
+        return False
+    try:
+        await asyncio.wait_for(client.models.list(), timeout=timeout)
+        return True
+    except Exception as exc:  # 예열 실패는 첫 요청이 느려질 뿐 틀리지 않는다
+        logger.warning("LLM 클라이언트 예열 실패: %s", type(exc).__name__)
+        return False
 
 
 def _cache_key(model: str, review_text: str, context_fingerprint: str) -> str:

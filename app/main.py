@@ -84,12 +84,12 @@ async def _warm_upstreams() -> None:
         settings.openai_base_url, settings.sheets_webhook_url,
     ]
     try:
-        _, n = await asyncio.gather(
+        _, n, llm_ready = await asyncio.gather(
             kakao_local_service.warm_connection_pool(),
             shared_http.warm_hosts(hosts),
+            llm_service.warm_llm_client(),   # SDK 자체 풀까지 데운다 — 공유 풀 예열로는 안 닿는다
         )
-        llm_ready = llm_service.warm_llm_client()   # 동기·즉시 — 객체 생성 비용을 첫 요청에서 뺀다
-        logger.info("업스트림 예열 완료: 호스트 %d개 연결, LLM 클라이언트 %s", n, "준비" if llm_ready else "없음")
+        logger.info("업스트림 예열 완료: 호스트 %d개 연결, LLM 풀 %s", n, "준비" if llm_ready else "실패")
     except Exception as exc:  # pragma: no cover - 예열 실패는 느려질 뿐 틀리지 않는다
         logger.warning("업스트림 예열 실패: %s", type(exc).__name__)
 

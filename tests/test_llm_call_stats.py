@@ -109,3 +109,21 @@ def test_second_run_is_served_from_cache(monkeypatch):
 
     assert calls["n"] == 1, "두 번째 실행은 리뷰 단위 캐시로 LLM 을 부르지 않아야 한다"
     assert st["status"] == "cached" and st["cache_hits"] == 2 and st["batch_size"] == 0
+
+
+def _fake_client_with_models(list_behaviour):
+    async def list_():
+        return list_behaviour()
+    return types.SimpleNamespace(models=types.SimpleNamespace(list=list_))
+
+
+def test_warm_llm_client_reports_success(monkeypatch):
+    monkeypatch.setattr(L, "_get_llm_client", lambda: _fake_client_with_models(lambda: ["m"]))
+    assert asyncio.run(L.warm_llm_client()) is True
+
+
+def test_warm_llm_client_swallows_failures(monkeypatch):
+    def boom():
+        raise ConnectionError("no route")
+    monkeypatch.setattr(L, "_get_llm_client", lambda: _fake_client_with_models(boom))
+    assert asyncio.run(L.warm_llm_client()) is False
