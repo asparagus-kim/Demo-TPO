@@ -242,6 +242,11 @@ def build_row(
 # create_task 로 띄운 태스크는 참조가 없으면 GC 가 중간에 회수할 수 있다.
 _pending: Set[asyncio.Task] = set()
 
+# 읽기 재시도 — 대시보드가 빈 화면으로 뜨는 것을 막는다. 쓰기는 fire-and-forget
+# 이라 재시도하지 않는다(중복 행이 생기는 편이 더 나쁘다).
+READ_MAX_ATTEMPTS = 3
+READ_RETRY_SEC = 1.0
+
 
 def enabled() -> bool:
     settings = get_settings()
@@ -356,17 +361,30 @@ async def fetch_rows(limit: int = 200) -> Dict[str, Any]:
     settings = get_settings()
     if not settings.sheets_webhook_url:
         return {"columns": list(COLUMNS), "rows": [], "available": False}
-    try:
-        resp = await get_client().get(
-            settings.sheets_webhook_url,
-            params={"token": settings.sheets_webhook_token, "limit": limit},
-            timeout=settings.sheets_timeout_sec,
-            follow_redirects=True,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as exc:
-        logger.warning("sheets read failed: %s", type(exc).__name__)
+
+    # Apps Script 는 302 로 script.googleusercontent.com 에 넘기므로 왕복이 두 번이다.
+    # 로컬에선 2~4초지만 Render(싱가포르·무료 플랜)에서는 이를 넘겨 간헐적으로
+    # 타임아웃이 났다 — 3번 중 2번 실패(2026-09-15 실측). 한 번 더 시도한다.
+    data = None
+    last_error = ""
+    for attempt in range(READ_MAX_ATTEMPTS):
+        try:
+            resp = await get_client().get(
+                settings.sheets_webhook_url,
+                params={"token": settings.sheets_webhook_token, "limit": limit},
+                timeout=settings.sheets_timeout_sec,
+                follow_redirects=True,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            break
+        except Exception as exc:
+            last_error = type(exc).__name__
+            if attempt < READ_MAX_ATTEMPTS - 1:
+                await asyncio.sleep(READ_RETRY_SEC)
+    if data is None:
+        logger.warning("sheets read failed after %d attempts: %s",
+                       READ_MAX_ATTEMPTS, last_error)
         return {"columns": list(COLUMNS), "rows": [], "available": False}
 
     return {

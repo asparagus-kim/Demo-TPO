@@ -81,6 +81,10 @@ services:
         sync: false
       - key: SHEETS_WEBHOOK_TOKEN
         sync: false
+      # Apps Script 는 302 리다이렉트를 타서 왕복이 두 번이다. Render 싱가포르
+      # 무료 플랜에서는 기본 10초로 부족해 간헐적으로 읽기가 실패했다.
+      - key: SHEETS_TIMEOUT_SEC
+        value: "30"
 
       # ---- Runtime tuning --------------------------------------------------
       - key: MOCK_MODE
