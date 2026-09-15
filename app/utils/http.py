@@ -32,7 +32,10 @@ import httpx
 _LIMITS = httpx.Limits(
     max_keepalive_connections=32,
     max_connections=64,
-    keepalive_expiry=60.0,
+    # 60초였다. 데모에서 분석 사이 간격이 1~5분이라 그 사이에 Kakao 연결이 전부
+    # 만료되고, 다음 분석은 새 연결 9개를 다시 열며 2~6초를 냈다(1초 계단, 실측).
+    # 5분으로 늘려 시작 시 예열한 풀이 데모 내내 살아 있게 한다.
+    keepalive_expiry=300.0,
 )
 
 # 호출 지점 대부분이 `timeout=20` 을 명시하므로 기본값도 같게 맞춘다.

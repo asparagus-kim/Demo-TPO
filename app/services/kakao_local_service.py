@@ -396,6 +396,36 @@ def _grid_key(location: Dict[str, float], meters: int = 500) -> str:
     return f"{round(location['lat'] / step)}:{round(location['lng'] / step)}"
 
 
+async def warm_connection_pool(size: int = 9) -> None:
+    """Kakao 로 가는 keep-alive 연결을 미리 `size` 개 열어 둔다.
+
+    실측(2026-09-15): 새 연결 위로 9건을 동시에 쏘면 응답이 1.08 / 2.07 / 3.08 /
+    … 6.10초로 **정확히 1초 계단**을 밟으며 직렬화됐다. IPv6 폴백은 아니었고
+    (IPv4 강제로도 동일), 원인을 끝까지 좁히진 못했지만 **예열된 풀에서는 9건이
+    0.07초**다. `surroundings()` 가 딱 9건을 동시에 부르므로 9개를 연다.
+    앱 시작 시 백그라운드로 한 번 돌리고, 연결은 `utils/http.py` 의 keepalive
+    (300초) 동안 살아 있다.
+    """
+    settings = get_settings()
+    if settings.effective_mock_mode() or not settings.kakao_rest_api_key:
+        return
+    client = shared_http.get_client()
+    headers = {"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"}
+
+    async def one() -> None:
+        try:
+            await client.get(settings.kakao_keyword_url,
+                             params={"query": "카페", "size": 1},
+                             headers=headers, timeout=10)
+        except Exception:
+            pass  # 예열 실패는 조용히 — 본 요청이 느려질 뿐 틀리지는 않는다
+
+    t0 = asyncio.get_running_loop().time()
+    await asyncio.gather(*[one() for _ in range(size)])
+    logger.info("Kakao 연결 풀 예열: %d개, %.2fs", size,
+                asyncio.get_running_loop().time() - t0)
+
+
 async def surroundings(
     location: Optional[Dict[str, float]], own_code: str = ""
 ) -> Optional[Dict[str, Any]]:

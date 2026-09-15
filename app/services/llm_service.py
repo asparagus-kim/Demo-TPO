@@ -17,7 +17,7 @@ import hashlib
 import json
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dc_replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -32,40 +32,53 @@ logger = get_logger(__name__)
 
 SYSTEM_PROMPT = (
     "You are an evaluator for Korean retail ambience profiling.\n"
-    "You must score a single customer review for three latent atmosphere dimensions:\n"
+    "You score EACH numbered customer review for three latent atmosphere dimensions:\n"
     "1. Energy: lively, busy, stimulating, noisy, exciting vs quiet, calm, subdued\n"
     "2. Tempo: fast, rushed, efficient, quick-turnover, short-stay vs slow, relaxed, lingering\n"
     "3. Mood: cozy, pleasant, stylish, warm, comfortable, emotionally attractive vs dull, cold, stressful\n"
-    "You must output valid JSON only."
+    "You must output valid JSON only, with exactly one entry per review, in the given order."
 )
 
-# `evidence_lang_label` is always "Korean" (한국어 단일 서비스). 중국어 지원 제거됨.
-# the model writes the human-facing `evidence` / `keywords` / `occasion_labels`
-# fields in the language the UI is currently rendering. Numeric fields and the
-# JSON schema itself are unaffected.
+# 리뷰 N건을 **요청 1번**에 묶는다. 예전에는 리뷰마다 1요청(동시 6)이었는데
+# Groq 무료 등급의 실제 병목은 TPM 8000 이 아니라 **OTPM(출력 토큰/분) 1000** 이었다.
+# 리뷰 1건 응답이 ~165 출력 토큰이라 5건이면 5번째부터 429 → 백오프 4.5초 → 결국
+# 휴리스틱으로 떨어졌고, 그게 분석 시간의 51~72% 였다 (2026-09-15 실측).
+# 묶으면 시스템 프롬프트를 한 번만 보내고, 출력도 건당 ~83 토큰으로 준다:
+#   개별 5회: 출력 ~825 tok · 벽시계 ~6s   →   묶음 1회: 출력 ~382 tok · ~1.1s
+#
+# `evidence`(설명문) 는 하류 어디서도 읽지 않아 뺐다 — 출력 토큰의 절반이 여기 있었다.
+# `occasion_labels` 는 derive_occasion 이 most_common(1) 만 보므로 2개면 충분하다.
+# `informativeness` 는 aggregate_text_scores 의 품질 지표(q) 에 쓰이므로 남긴다.
 USER_TEMPLATE = (
-    "Given the following review and shop context, return JSON with schema:\n"
+    "Score every review below. Return JSON with schema:\n"
     "{{\n"
-    "  \"energy\": 0.0-1.0,\n"
-    "  \"tempo\": 0.0-1.0,\n"
-    "  \"mood\": 0.0-1.0,\n"
-    "  \"occasion_labels\": [string in {evidence_lang_label}],\n"
-    "  \"keywords\": [string in {evidence_lang_label}],\n"
-    "  \"evidence\": \"short {evidence_lang_label} explanation\",\n"
-    "  \"informativeness\": 0.0-1.0\n"
-    "}}\n\n"
+    "  \"scores\": [\n"
+    "    {{\"i\": <1-based review number>, \"energy\": 0.0-1.0, \"tempo\": 0.0-1.0, \"mood\": 0.0-1.0,\n"
+    "     \"informativeness\": 0.0-1.0,\n"
+    "     \"keywords\": [up to 3 short {evidence_lang_label} words],\n"
+    "     \"occasion_labels\": [up to 2 short {evidence_lang_label} visit-occasion labels]}}\n"
+    "  ]\n"
+    "}}\n"
+    "No other fields. Exactly one entry per review, in order.\n\n"
     "Shop context:\n"
     "- business_type: {business_type}\n"
     "- trade_area: {trade_area}\n"
     "- weather: {weather_summary}\n"
     "- business_hours: {business_hours}\n\n"
-    "Review:\n{review_text}\n\n"
+    "Reviews:\n{reviews_block}\n\n"
     "Scoring guidance:\n"
     "- Energy high if the review implies crowd, liveliness, stimulation, noise, excitement\n"
     "- Tempo high if the review implies hurry, short stay, quick service, fast turnover, lunch rush\n"
     "- Mood high if the review implies coziness, beauty, comfort, style, emotional positivity\n"
     "Output JSON only."
 )
+
+# 출력 토큰 예산. 실측 건당 ~83 → 여유를 두고 110. Groq 는 max_tokens 가 없으면
+# '예상 출력' 을 크게 잡아 "Request too large" 로 요청 자체를 거절한다.
+LLM_OUTPUT_TOKENS_PER_REVIEW = 110
+LLM_OUTPUT_TOKENS_BASE = 64
+# OTPM 1000 ÷ ~83 ≈ 12. 이 위로는 한 요청이 분당 한도를 혼자 다 쓴다.
+LLM_BATCH_HARD_CAP = 12
 
 
 def _evidence_lang_label(lang: str = "ko") -> str:  # noqa: ARG001 — 한국어 고정
@@ -265,35 +278,47 @@ def _heuristic_score(review: PlaceReview) -> ReviewScore:
 
 # ------------------------------------------------------------------- OpenAI call
 
-async def _call_openai(
-    text: str,
+def _score_from_payload(item: Dict[str, Any]) -> ReviewScore:
+    return ReviewScore(
+        energy=float(item.get("energy", 0.5)),
+        tempo=float(item.get("tempo", 0.5)),
+        mood=float(item.get("mood", 0.5)),
+        informativeness=float(item.get("informativeness", 0.7)),
+        occasion_labels=[str(x) for x in item.get("occasion_labels", []) if x][:2],
+        keywords=[str(x) for x in item.get("keywords", []) if x][:3],
+        evidence="",
+    )
+
+
+async def _score_batch(
+    texts: List[str],
     *,
     business_type: str,
     trade_area: str,
     weather_summary: str,
     business_hours: str,
     lang: str = "ko",
-) -> Optional[ReviewScore]:
+) -> Optional[List[Optional[ReviewScore]]]:
+    """리뷰 N건을 LLM 요청 1번으로 채점한다. `texts` 와 같은 순서·길이의 리스트를 돌려주고,
+    모델이 빠뜨린 항목은 None 으로 남긴다(호출자가 휴리스틱으로 채운다).
+    요청 자체가 실패하면 None."""
+    if not texts:
+        return []
     settings = get_settings()
-    cache = get_cache("llm")
-    # 한국어 단일 서비스 — lang 은 프롬프트 라벨용으로만 남아 있다
-    # outputs that should not collide.
-    context_fp = f"{business_type}|{trade_area}|{weather_summary}|{business_hours}"
-    ck = _cache_key(settings.openai_model, text, context_fp)
-    if ck in cache:
-        return cache[ck]
-
     client = _get_llm_client()
     if client is None:
         return None
+
+    reviews_block = "\n".join(f"{i + 1}. {t.strip()}" for i, t in enumerate(texts))
     prompt = USER_TEMPLATE.format(
         business_type=business_type or "",
         trade_area=trade_area or "",
         weather_summary=weather_summary or "",
         business_hours=business_hours or "",
-        review_text=text,
+        reviews_block=reviews_block,
         evidence_lang_label=_evidence_lang_label(lang),
     )
+    max_tokens = LLM_OUTPUT_TOKENS_BASE + LLM_OUTPUT_TOKENS_PER_REVIEW * len(texts)
 
     resp = None
     for attempt in range(LLM_MAX_ATTEMPTS):
@@ -301,6 +326,7 @@ async def _call_openai(
             resp = await client.chat.completions.create(
                 model=settings.openai_model,
                 temperature=0.0,
+                max_tokens=max_tokens,
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -310,9 +336,8 @@ async def _call_openai(
             )
             break
         except Exception as exc:
-            # 무료 플랜은 분당 한도가 낮아 동시 6건을 쏘면 429 가 섞여 나온다.
-            # 예전에는 첫 실패에서 바로 휴리스틱으로 떨어졌고, 그 사실이 응답
-            # 어디에도 남지 않아 점수가 조용히 나빠졌다. 429 만 짧게 재시도한다.
+            # 묶음이라 요청은 1번이지만, 직전 분석과 같은 분(minute) 안이면 OTPM 이 남아
+            # 있지 않을 수 있다. 429 만 짧게 재시도하고, 그래도 안 되면 휴리스틱으로.
             if _is_rate_limited(exc) and attempt < LLM_MAX_ATTEMPTS - 1:
                 delay = LLM_RETRY_BASE_SEC * (2 ** attempt)
                 logger.warning("LLM rate-limited (%s) — %.1fs 후 재시도 %d/%d",
@@ -332,17 +357,28 @@ async def _call_openai(
         logger.warning("LLM returned non-JSON: %s", content[:200])
         return None
 
-    score = ReviewScore(
-        energy=float(payload.get("energy", 0.5)),
-        tempo=float(payload.get("tempo", 0.5)),
-        mood=float(payload.get("mood", 0.5)),
-        informativeness=float(payload.get("informativeness", 0.7)),
-        occasion_labels=[str(x) for x in payload.get("occasion_labels", []) if x][:5],
-        keywords=[str(x) for x in payload.get("keywords", []) if x][:5],
-        evidence=str(payload.get("evidence", ""))[:240],
-    )
-    cache[ck] = score
-    return score
+    items = payload.get("scores") if isinstance(payload, dict) else None
+    if not isinstance(items, list):
+        logger.warning("LLM batch payload has no 'scores' list: %s", content[:200])
+        return None
+
+    out: List[Optional[ReviewScore]] = [None] * len(texts)
+    for pos, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        # 모델이 준 번호(i, 1-based) 를 우선 믿고, 없거나 범위를 벗어나면 순서로 맞춘다.
+        try:
+            idx = int(item.get("i", pos + 1)) - 1
+        except (TypeError, ValueError):
+            idx = pos
+        if not (0 <= idx < len(texts)):
+            idx = pos
+        if 0 <= idx < len(texts) and out[idx] is None:
+            out[idx] = _score_from_payload(item)
+    missing = sum(1 for x in out if x is None)
+    if missing:
+        logger.warning("LLM batch: %d/%d 건 누락 → 휴리스틱으로 보충", missing, len(texts))
+    return out
 
 
 # --------------------------------------------------------------------- public API
@@ -357,7 +393,8 @@ async def score_reviews(
     lang: str = "ko",
 ) -> List[ReviewScore]:
     settings = get_settings()
-    cap = max(5, min(settings.llm_review_cap, 40))
+    # 상한이 곧 묶음 크기다. 12 위로는 요청 1번이 OTPM(1000/분) 을 혼자 다 쓴다.
+    cap = max(1, min(settings.llm_review_cap, LLM_BATCH_HARD_CAP))
     selected = [r for r in reviews if (r.text or "").strip()]
     selected.sort(key=lambda r: len(r.text or ""), reverse=True)
     selected = selected[:cap]
@@ -365,32 +402,42 @@ async def score_reviews(
         return []
 
     use_llm = not settings.effective_mock_mode() and bool(settings.openai_api_key)
-    logger.info("score_reviews: n=%d use_llm=%s", len(selected), use_llm)
+    logger.info("score_reviews: n=%d use_llm=%s (batched)", len(selected), use_llm)
 
-    sem = asyncio.Semaphore(6)
     results: List[Optional[ReviewScore]] = [None] * len(selected)
 
-    async def _one(idx: int, review: PlaceReview):
-        async with sem:
-            if use_llm:
-                score = await _call_openai(
-                    review.text,
-                    business_type=business_type,
-                    trade_area=trade_area,
-                    weather_summary=weather_summary,
-                    business_hours=business_hours,
-                    lang=lang,
-                )
-                if score is None:
-                    score = _heuristic_score(review)
-            else:
-                score = _heuristic_score(review)
-            score.weight = compute_weight(review)
-            results[idx] = score
+    if use_llm:
+        cache = get_cache("llm")
+        context_fp = f"{business_type}|{trade_area}|{weather_summary}|{business_hours}"
+        keys = [_cache_key(settings.openai_model, r.text, context_fp) for r in selected]
+        # 캐시는 리뷰 단위로 유지한다 — 같은 매장을 다시 분석하면 묶음 자체가 필요 없다.
+        misses = [i for i, k in enumerate(keys) if k not in cache]
+        for i, k in enumerate(keys):
+            if k in cache:
+                results[i] = cache[k]
 
-    await asyncio.gather(*[_one(i, r) for i, r in enumerate(selected)])
+        if misses:
+            batch = await _score_batch(
+                [selected[i].text for i in misses],
+                business_type=business_type,
+                trade_area=trade_area,
+                weather_summary=weather_summary,
+                business_hours=business_hours,
+                lang=lang,
+            )
+            if batch:
+                for j, i in enumerate(misses):
+                    score = batch[j] if j < len(batch) else None
+                    if score is not None:
+                        results[i] = score
+                        cache[keys[i]] = score
 
-    return [r for r in results if r is not None]
+    out: List[ReviewScore] = []
+    for i, review in enumerate(selected):
+        score = results[i] or _heuristic_score(review)
+        # 캐시된 객체를 직접 고치면 다른 분석의 가중치까지 바뀐다 — 복제해서 붙인다.
+        out.append(dc_replace(score, weight=compute_weight(review)))
+    return out
 
 
 

@@ -10,6 +10,8 @@ Static assets live under `/static`.
 """
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import get_settings
 from .routers import analyse, health
-from .services import sheets_logger, trade_area_service
+from .services import kakao_local_service, sheets_logger, trade_area_service
 from .utils import http as shared_http
 from .utils.logging import configure_logging, get_logger
 
@@ -67,6 +69,10 @@ async def _startup() -> None:
         trade_area_service.get_trade_area_service().load()
     except Exception as exc:  # pragma: no cover
         logger.exception("Failed to preload trade-area dataset: %s", exc)
+
+    # Kakao 연결 풀 예열 — 백그라운드로. 헬스체크나 첫 요청을 막지 않는다.
+    # 첫 분석의 상권 집계(동시 9건)가 새 연결을 열며 2~6초를 내던 것을 없앤다.
+    app.state.kakao_warm_task = asyncio.create_task(kakao_local_service.warm_connection_pool())
 
 
 @app.on_event("shutdown")
