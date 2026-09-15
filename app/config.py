@@ -108,10 +108,32 @@ class Settings:
         "KAKAO_COORD2REGION_URL", "https://dapi.kakao.com/v2/local/geo/coord2regioncode.json",
     ))
 
+    # 분석 수집(Analysis Data Collection) — Google Apps Script 웹앱 → 시트 append.
+    # URL 자체가 자격증명이다: 아는 사람은 누구나 시트에 행을 쓸 수 있으므로
+    # 프론트 번들에 넣지 않고 서버에서만 부른다. 토큰은 스크립트 쪽에서 대조한다.
+    sheets_webhook_url: str = field(default_factory=lambda: os.getenv("SHEETS_WEBHOOK_URL", "").strip())
+    sheets_webhook_token: str = field(default_factory=lambda: os.getenv("SHEETS_WEBHOOK_TOKEN", "").strip())
+    sheets_logging_enabled: bool = field(default_factory=lambda: _get_bool("SHEETS_LOGGING_ENABLED", True))
+    # 캐시 히트도 '사용자가 분석을 돌린' 사건이므로 기본으로 함께 남긴다.
+    sheets_log_cache_hits: bool = field(default_factory=lambda: _get_bool("SHEETS_LOG_CACHE_HITS", True))
+    # `needs_input` 은 중간 플로우 상태다. 켜면 한 분석이 2행 이상을 만든다.
+    sheets_log_needs_input: bool = field(default_factory=lambda: _get_bool("SHEETS_LOG_NEEDS_INPUT", False))
+    sheets_timeout_sec: float = field(default_factory=lambda: float(_get_int("SHEETS_TIMEOUT_SEC", 10)))
+
     # Runtime
     mock_mode: bool = field(default_factory=lambda: _get_bool("MOCK_MODE", False))
     llm_review_cap: int = field(default_factory=lambda: _get_int("LLM_REVIEW_CAP", 25))
     openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    # LLM 제공자 전환점. OpenAI 호환 엔드포인트면 여기만 바꾸면 된다
+    # (Groq: https://api.groq.com/openai/v1 · OpenRouter: https://openrouter.ai/api/v1).
+    #
+    # 예전에는 이 값을 코드에서 읽지 않고 OpenAI SDK 가 환경변수에서 알아서
+    # 집어가게 두었다. 동작은 했지만 어떤 제공자를 쓰는지 코드 어디에도 드러나지
+    # 않아, 모델이 폐기됐을 때 원인을 찾기 어려웠다. 이제 명시적으로 넘긴다.
+    openai_base_url: str = field(default_factory=lambda: os.getenv("OPENAI_BASE_URL", "").strip())
+    # OpenRouter 가 순위 페이지에 노출할 때 쓰는 선택 헤더. 없어도 호출은 된다.
+    openrouter_site_url: str = field(default_factory=lambda: os.getenv("OPENROUTER_SITE_URL", "").strip())
+    openrouter_app_name: str = field(default_factory=lambda: os.getenv("OPENROUTER_APP_NAME", "Yielda TPO").strip())
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
     # Google Places 일별 호출 상한.

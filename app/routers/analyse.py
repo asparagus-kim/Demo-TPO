@@ -22,11 +22,12 @@ import asyncio
 import hashlib
 import json
 import re
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 from ..config import get_settings
 from ..schemas import (
@@ -51,6 +52,7 @@ from ..services import (
     music_service,
     nts_service,
     places_service,
+    sheets_logger,
     trade_area_service,
     weather_service,
     web_search_service,
@@ -76,9 +78,28 @@ def _cache_key(digits: str, *, company_name: str = "", place_id: str = "") -> st
 
 
 @router.post("/api/analyse", response_model=AnalyseResponse)
-async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
+async def analyse(
+    payload: AnalyseRequest,
+    x_yielda_client: str = Header(default=""),
+) -> AnalyseResponse:
     settings = get_settings()
     raw_value = payload.business_number
+    started = time.perf_counter()
+
+    def _collect(response: AnalyseResponse, outcome: str, *, cache_hit: bool = False) -> AnalyseResponse:
+        """분석 수집 시트에 한 행 남기고 응답을 그대로 돌려준다 (fire-and-forget).
+
+        모든 종료 지점을 이 함수로 감싼다. 실패해도 응답에는 영향이 없다.
+        """
+        sheets_logger.log_analysis(
+            response,
+            request=payload,
+            outcome=outcome,
+            client=x_yielda_client or "api",
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            cache_hit=cache_hit,
+        )
+        return response
 
     # -------- Step 1: validate business number
     try:
@@ -95,28 +116,31 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
                       place_id=payload.place_id or "")
     if ckey in cache:
         logger.info("analyse cache hit for %s", ckey)
-        return cache[ckey]
+        cached = cache[ckey]
+        # 캐시 히트도 '사용자가 분석을 돌린' 사건이다 — 수집에서 빠지면 시트의
+        # 실행 횟수가 실제보다 적게 보인다. cache_hit 열로 구분한다.
+        return _collect(cached, "success" if cached.success else "error", cache_hit=True)
 
     # -------- Step 2: NTS
     nts = await nts_service.lookup_status(digits)
     status_label = nts.get("status_label") or nts_service.STATUS_LOOKUP_FAILED
 
     if status_label == nts_service.STATUS_CLOSED:
-        return AnalyseResponse(
+        return _collect(AnalyseResponse(
                 success=False,
                 business_number=formatted,
                 nts_status=status_label,
                 error="입력하신 사업자등록번호는 폐업 상태로 확인되어 분석을 진행할 수 없습니다.",
                 debug={"nts": nts, "llm_prompt_version": settings.prompt_version, "reviews_used": 0},
-            )
+            ), "closed")
     if status_label in (nts_service.STATUS_SUSPENDED,):
-        return AnalyseResponse(
+        return _collect(AnalyseResponse(
                 success=False,
                 business_number=formatted,
                 nts_status=status_label,
                 error="입력하신 사업자등록번호는 휴업 상태로 확인되어 분석을 진행할 수 없습니다.",
                 debug={"nts": nts, "llm_prompt_version": settings.prompt_version, "reviews_used": 0},
-            )
+            ), "suspended")
     if status_label != nts_service.STATUS_ACTIVE and not settings.effective_mock_mode():
         logger.warning("NTS status not active (%s) — continuing anyway with degraded confidence", status_label)
 
@@ -133,7 +157,7 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
         logger.info("NTS status recovered via Bizno API: %s", status_label)
 
     if identity.needs_user_input or not identity.company_name:
-        return AnalyseResponse(
+        return _collect(AnalyseResponse(
                 success=False,
                 business_number=formatted,
                 nts_status=status_label,
@@ -146,7 +170,7 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
                 ),
                 debug={"nts": nts, "identity_source": identity.source,
                        "llm_prompt_version": settings.prompt_version, "reviews_used": 0},
-            )
+            ), "needs_input")
 
     # -------- Step 4: Kakao Local — 업종·주소·좌표 확정
     place_candidates = await kakao_local_service.search_candidates(
@@ -170,7 +194,7 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
             "low_score": f"'{identity.company_name}' 와 일치하는 매장을 찾지 못했습니다. 지역을 입력하거나 상호명을 확인해 주세요.",
             "empty": f"'{identity.company_name}' 로 검색된 매장이 없습니다. 상호명이나 지역을 입력해 주세요.",
         }.get(pick_reason, "매장을 선택해 주세요.")
-        return AnalyseResponse(
+        return _collect(AnalyseResponse(
                 success=False,
                 business_number=formatted,
                 nts_status=status_label,
@@ -179,13 +203,18 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
                 needs_input=NeedsInput(
                     reason="place_choice" if place_candidates else "not_found",
                     message=msg,
-                    fields=["place_id", "address_hint"],
+                    # `company_name` 이 반드시 들어가야 한다. 프론트는 이 목록을 보고
+                    # 상호명 입력칸을 그릴지 정하는데, 빠져 있으면 지역칸만 나온다.
+                    # 그런데 여기까지 온 이유는 대부분 **bizno 상호명이 Kakao 에 없어서**다
+                    # (법인명·협회명이 그대로 오는 경우). 지역만 바꿔 재요청하면 같은
+                    # 상호명으로 다시 검색하므로 영원히 같은 화면으로 돌아온다.
+                    fields=["place_id", "company_name", "address_hint"],
                     place_candidates=place_candidates,
                 ),
                 debug={"nts": nts, "identity_source": identity.source,
                        "kakao_candidates": len(place_candidates), "pick_reason": pick_reason,
                        "llm_prompt_version": settings.prompt_version, "reviews_used": 0},
-            )
+            ), "needs_input")
 
     # 확정. 업종·주소는 Kakao가 canonical (등록 주소는 본점일 수 있어 상권 매칭에 못 쓴다).
     business_info = BusinessInfo(
@@ -546,18 +575,33 @@ async def analyse(payload: AnalyseRequest) -> AnalyseResponse:
     _persist_intermediate(digits, response)
     logger.info("=== analyse done: %s E=%d T=%d M=%d ===",
                 formatted, ambience.energy, ambience.tempo, ambience.mood)
-    return response
+    return _collect(response, "success")
 
 
 @router.post("/api/reanalyse", response_model=AnalyseResponse)
-async def reanalyse(payload: AnalyseRequest) -> AnalyseResponse:
+async def reanalyse(
+    payload: AnalyseRequest,
+    x_yielda_client: str = Header(default=""),
+) -> AnalyseResponse:
     """Force-refresh the cached analysis for this business number."""
     digits = nts_service.normalize_business_number(payload.business_number)
     cache = get_cache("analysis")
     # 사용자 선택별로 키가 갈리므로 해당 번호의 모든 변형을 지운다.
     for k in [k for k in list(cache.keys()) if str(k).startswith(f"analyse:{digits}:")]:
         cache.pop(k, None)
-    return await analyse(payload)
+    return await analyse(payload, x_yielda_client=x_yielda_client)
+
+
+@router.get("/api/collection")
+async def collection(limit: int = 200) -> dict:
+    """수집 시트의 최근 행을 되읽어 준다 (기획·운영 대시보드용).
+
+    프론트가 Apps Script 를 직접 부르지 않는 이유: 웹훅 URL·토큰이 번들에
+    박히면 누구나 시트에 쓸 수 있고, Apps Script 는 CORS 프리플라이트를 받지
+    않는다. 시트가 설정되지 않았으면 `available: false` + 빈 배열로 degrade 한다.
+    """
+    limit = max(1, min(limit, 2000))
+    return await sheets_logger.fetch_rows(limit=limit)
 
 
 @router.get("/api/trade-area/test")

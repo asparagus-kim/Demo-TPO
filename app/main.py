@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import get_settings
 from .routers import analyse, health
-from .services import trade_area_service
+from .services import sheets_logger, trade_area_service
 from .utils import http as shared_http
 from .utils.logging import configure_logging, get_logger
 
@@ -71,6 +71,8 @@ async def _startup() -> None:
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
+    # 수집 전송은 fire-and-forget 이라 종료 시점에 날아갈 수 있다. 잠깐만 기다린다.
+    await sheets_logger.drain()
     # 공유 httpx 연결 풀을 정리한다. 남겨 두면 종료 시 "Unclosed client" 경고가 난다.
     await shared_http.aclose()
 

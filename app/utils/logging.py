@@ -46,6 +46,10 @@ SECRET_ENV_NAMES: Tuple[str, ...] = (
     "BIZNO_API_KEY",
     "GOOGLE_MAPS_API_KEY",
     "OPENAI_API_KEY",
+    # 이 둘은 '엔드포인트'처럼 보이지만 실제로는 자격증명이다. Apps Script 웹앱
+    # exec URL 을 아는 사람은 누구나 수집 시트에 행을 쓸 수 있다.
+    "SHEETS_WEBHOOK_URL",
+    "SHEETS_WEBHOOK_TOKEN",
 )
 
 # Shortest value we will treat as a secret. Guards against blanking every "0"
