@@ -85,6 +85,16 @@ async def analyse(
     settings = get_settings()
     raw_value = payload.business_number
     started = time.perf_counter()
+    # 단계별 소요(ms). 느린 분석이 나왔을 때 어느 단계가 먹었는지 응답만 보고 알기 위해.
+    # 2026-09-15: 같은 코드에서 13.6초와 2.8초가 나왔는데 LLM(debug.llm)은 5.5초 vs 1.8초라
+    # 나머지 ~8초를 못 설명했다 — 새 인스턴스 첫 요청의 콜드 TLS 였고, 이게 있었으면 즉시 보였다.
+    _timings: dict = {}
+    _t_prev = [started]
+
+    def _mark(stage: str) -> None:
+        now = time.perf_counter()
+        _timings[stage] = int((now - _t_prev[0]) * 1000)
+        _t_prev[0] = now
 
     def _collect(response: AnalyseResponse, outcome: str, *, cache_hit: bool = False) -> AnalyseResponse:
         """분석 수집 시트에 한 행 남기고 응답을 그대로 돌려준다 (fire-and-forget).
@@ -124,6 +134,7 @@ async def analyse(
     # -------- Step 2: NTS
     nts = await nts_service.lookup_status(digits)
     status_label = nts.get("status_label") or nts_service.STATUS_LOOKUP_FAILED
+    _mark("nts")
 
     if status_label == nts_service.STATUS_CLOSED:
         return _collect(AnalyseResponse(
@@ -151,6 +162,8 @@ async def analyse(
         digits, user_company_name=payload.company_name, user_address=payload.address_hint,
     )
 
+    _mark("bizno")
+
     # NTS API 503 장애로 status_label이 '조회실패'일 때, Bizno가 돌려준 사업 상태(예: '계속사업자')가 있으면 자동 복구한다
     if status_label == nts_service.STATUS_LOOKUP_FAILED and identity.registered_status:
         status_label = identity.registered_status
@@ -176,6 +189,8 @@ async def analyse(
     place_candidates = await kakao_local_service.search_candidates(
         identity.company_name, address_hint=payload.address_hint or identity.address,
     )
+
+    _mark("kakao_search")
 
     chosen: Optional[PlaceCandidate] = None
     if payload.place_id:
@@ -257,6 +272,7 @@ async def analyse(
         _fanout.append(weather_service.fetch_weather(chosen.location))
 
     _fanned = await asyncio.gather(*_fanout)
+    _mark("fanout_kakao_google_kma")
     surround, places_candidate = _fanned[0], _fanned[1]
     weather_early = _fanned[2] if _weather_first else None
 
@@ -361,6 +377,8 @@ async def analyse(
         places.business_hours = recovered_hours
         hours_source = "web"
 
+    _mark("web_fallback")
+
     # Choose the text-evidence corpus the LLM will actually score.
     if has_google_reviews and web_evidence:
         review_corpus = list(places.reviews) + web_search_service.to_place_reviews(web_evidence)
@@ -397,6 +415,7 @@ async def analyse(
         weather_summary=weather.summary,
         business_hours=hours_summary,
     )
+    _mark("llm")
     text_scores = llm_service.aggregate_text_scores(review_scores)
 
     # -------- Step 8: TPO + ambience
@@ -542,6 +561,7 @@ async def analyse(
             # LLM 이 실제로 돌았는지, 몇 번 시도했는지, 몇 ms 걸렸는지. 실패해도
             # 휴리스틱으로 success:true 가 나가므로 이게 없으면 느린 분석의 원인을 못 가른다.
             "llm": llm_service.last_call_stats(),
+            "timings_ms": {**_timings, "total": int((time.perf_counter() - started) * 1000)},
             "google_review_count_raw": len(places_candidate.reviews or []),
             "web_evidence_count": len(web_evidence),
             "text_source": text_source,

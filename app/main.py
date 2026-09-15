@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import get_settings
 from .routers import analyse, health
-from .services import kakao_local_service, sheets_logger, trade_area_service
+from .services import kakao_local_service, llm_service, sheets_logger, trade_area_service
 from .utils import http as shared_http
 from .utils.logging import configure_logging, get_logger
 
@@ -70,9 +70,28 @@ async def _startup() -> None:
     except Exception as exc:  # pragma: no cover
         logger.exception("Failed to preload trade-area dataset: %s", exc)
 
-    # Kakao 연결 풀 예열 — 백그라운드로. 헬스체크나 첫 요청을 막지 않는다.
-    # 첫 분석의 상권 집계(동시 9건)가 새 연결을 열며 2~6초를 내던 것을 없앤다.
-    app.state.kakao_warm_task = asyncio.create_task(kakao_local_service.warm_connection_pool())
+    # 업스트림 연결 예열 — 백그라운드로. 헬스체크나 첫 요청을 막지 않는다.
+    #   1) Kakao 는 상권 집계가 동시 9건이라 연결 9개를 연다 (2~6초 → 0.07초)
+    #   2) 나머지 호스트는 각 1개 — 새 인스턴스의 첫 분석이 콜드 TLS 를 전부 물어
+    #      14~21초가 나오던 것을 없앤다 (실측: 30초 뒤 같은 코드 2.8초)
+    app.state.warm_task = asyncio.create_task(_warm_upstreams())
+
+
+async def _warm_upstreams() -> None:
+    hosts = [
+        settings.nts_api_url, settings.bizno_api_url, settings.kakao_keyword_url,
+        settings.text_search_url, settings.geocode_url, settings.kma_ultra_ncst_url,
+        settings.openai_base_url, settings.sheets_webhook_url,
+    ]
+    try:
+        _, n = await asyncio.gather(
+            kakao_local_service.warm_connection_pool(),
+            shared_http.warm_hosts(hosts),
+        )
+        llm_ready = llm_service.warm_llm_client()   # 동기·즉시 — 객체 생성 비용을 첫 요청에서 뺀다
+        logger.info("업스트림 예열 완료: 호스트 %d개 연결, LLM 클라이언트 %s", n, "준비" if llm_ready else "없음")
+    except Exception as exc:  # pragma: no cover - 예열 실패는 느려질 뿐 틀리지 않는다
+        logger.warning("업스트림 예열 실패: %s", type(exc).__name__)
 
 
 @app.on_event("shutdown")

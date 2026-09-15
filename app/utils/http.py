@@ -23,7 +23,9 @@ Never wrap the returned client in `async with`: that closes the shared pool.
 """
 from __future__ import annotations
 
-from typing import Optional
+import asyncio
+from typing import Iterable, Optional
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -62,3 +64,41 @@ async def aclose() -> None:
     if _client is not None and not _client.is_closed:
         await _client.aclose()
     _client = None
+
+
+async def warm_hosts(urls: Iterable[str], *, timeout: float = 5.0) -> int:
+    """업스트림 호스트마다 TLS 연결을 하나씩 미리 열어 공유 풀에 넣어 둔다. 성공 수를 돌려준다.
+
+    왜 (2026-09-15 실측): Render 에서 인스턴스가 새로 뜬 뒤 **첫 분석**은 매번 14~21초,
+    30초 뒤 같은 코드로 다른 매장은 2.8초였다. debug.llm 으로 LLM 을 떼어 보니 첫 요청의
+    비-LLM 구간이 ~8초 — 국세청·bizno·Kakao·Google·기상청·Groq·Sheets 로의 콜드 TLS
+    핸드셰이크가 한 요청에 몰린 값이다. 무료 플랜은 배포나 15분 유휴로 인스턴스가 자주
+    새로 뜨므로, 데모의 첫 요청이 정확히 이 경우다.
+
+    호스트 루트에 GET 한 번이면 응답 코드가 404/403 이어도 연결은 풀에 남는다 — 쿼터도
+    부작용도 없다. keepalive(300s) 동안 살아 있으니 발표 1~2분 전에 /health 를 한 번
+    치는 것으로 첫 요청 페널티를 없앤다.
+    """
+    hosts = []
+    for u in urls:
+        if not u:
+            continue
+        parts = urlsplit(u if "://" in u else f"https://{u}")
+        if parts.scheme and parts.netloc:
+            root = f"{parts.scheme}://{parts.netloc}/"
+            if root not in hosts:
+                hosts.append(root)
+    if not hosts:
+        return 0
+    client = get_client()
+
+    async def one(root: str) -> bool:
+        try:
+            await client.get(root, timeout=timeout)
+            return True
+        except httpx.HTTPError:
+            # 4xx/5xx 는 예외가 아니다(연결은 이미 열렸다). 여기 오는 건 연결/타임아웃 실패.
+            return False
+
+    results = await asyncio.gather(*[one(h) for h in hosts])
+    return sum(1 for ok in results if ok)

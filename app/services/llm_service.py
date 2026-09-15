@@ -263,6 +263,13 @@ def reset_llm_client() -> None:
     _llm_client = None
 
 
+def warm_llm_client() -> bool:
+    """시작 시 클라이언트를 미리 만든다. AsyncOpenAI 생성(SSL 컨텍스트 등)이 첫 분석에서
+    ~0.5초를 먹었다 — debug.timings_ms 의 llm 단계(1719ms)와 debug.llm.latency_ms(1239ms)
+    의 차이로 드러났다(2026-09-15). TLS 자체는 utils/http.warm_hosts 가 연다."""
+    return _get_llm_client() is not None
+
+
 def _cache_key(model: str, review_text: str, context_fingerprint: str) -> str:
     digest = hashlib.sha1((model + "|" + context_fingerprint + "|" + review_text).encode("utf-8")).hexdigest()
     return f"rv:{digest}"
