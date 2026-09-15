@@ -40,10 +40,38 @@ ADDRESS_HARD_OVERRIDE = 92.0         # exact-canonical address overrides weak na
 # ---------------------------------------------------------------------- name helpers
 
 _NAME_NOISE_PATTERNS = [
-    re.compile(r"\([^)]*\)"),                         # any parenthesised text
-    re.compile(r"\[[^\]]*\]"),
+    # 전각 괄호 （）를 반드시 함께 받아야 한다. 국세청·bizno 는 법인 상호를
+    # 전각으로 돌려주는 일이 잦은데(（재）서울예술실용전문학교), ASCII 괄호만
+    # 지우면 접두사가 그대로 남아 Kakao 검색이 0건이 된다 (2026-09-15 실측).
+    re.compile(r"[(（][^)）]*[)）]"),               # any parenthesised text (half/full width)
+    re.compile(r"[\[［][^\]］]*[\]］]"),
     re.compile(r"[　\s]+"),                       # whitespace
 ]
+
+# 상호 앞머리의 법인격 표기. 검색어에서 떼어내는 용도 — Kakao 에는 법인명이
+# 아니라 간판명이 등재되어 있어서, 이걸 붙인 채로 검색하면 대부분 0건이다.
+LEGAL_PREFIX_RE = re.compile(
+    r"^\s*(?:"
+    # 괄호 안이 한 글자(주/재/사)일 수도, 단어 전체(사단법인)일 수도 있다.
+    r"[(（]\s*(?:주식회사|재단법인|사단법인|학교법인|의료법인|사회복지법인"
+    r"|유한회사|주|재|사|학|의|유|합)\s*[)）]"
+    r"|㈜|㈐|㈑"
+    r"|주식회사|재단법인|사단법인|학교법인|의료법인|사회복지법인"
+    r"|유한회사|유한책임회사|합자회사|합명회사|협동조합"
+    r")\s*"
+)
+
+
+def strip_legal_prefix(name: Optional[str]) -> str:
+    """'（재）서울예술실용전문학교' → '서울예술실용전문학교'.
+
+    `normalize_company_name` 과 달리 **원문 형태를 최대한 보존**한다 —
+    Kakao 검색어로 그대로 쓰기 때문이다(소문자화·공백제거를 하면 안 된다).
+    """
+    if not name:
+        return ""
+    out = LEGAL_PREFIX_RE.sub("", str(name)).strip()
+    return out or str(name).strip()
 
 _LEGAL_PREFIXES = (
     "주식회사", "(주)", "㈜", "유한회사", "(유)", "합자회사",

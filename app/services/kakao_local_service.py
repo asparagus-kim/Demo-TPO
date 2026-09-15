@@ -41,7 +41,7 @@ from ..schemas import PlaceCandidate
 from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
-from .entity_validation_service import normalize_company_name
+from .entity_validation_service import normalize_company_name, strip_legal_prefix
 from .trade_area_service import (
     SURROUND_GROUPS as TA_GROUPS,
     SURROUND_RADIUS_M as TA_RADIUS,
@@ -309,12 +309,21 @@ async def search_candidates(
     if branch:
         logger.info("상호명에서 지점 힌트 추출: '%s' → '%s'", name, branch)
 
+    # 법인격 표기를 뗀 형태. Kakao 에는 법인명이 아니라 **간판명**이 등재되므로
+    # '（재）서울예술실용전문학교' 로는 0건이지만 '서울예술실용전문학교' 로는 8건이
+    # 나온다. 실측(2026-09-15): 검색 0건이던 7건 중 5건이 이것만으로 살아났다.
+    bare = strip_legal_prefix(name)
+
     queries: List[str] = []
     if hint:
         queries.append(f"{name} {_sigungu(hint)}".strip())
+        if bare != name:
+            queries.append(f"{bare} {_sigungu(hint)}".strip())
     if branch:
         queries.append(f"{name} {branch}".strip())
     queries.append(name)
+    if bare != name:
+        queries.append(bare)
 
     docs: List[Dict[str, Any]] = []
     client = shared_http.get_client()
