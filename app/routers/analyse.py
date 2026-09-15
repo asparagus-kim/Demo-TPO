@@ -335,46 +335,31 @@ async def analyse(
     needs_hours_fallback = validation.is_consistent and not places.business_hours
 
     web_evidence: list = []
+    recovered_hours: list = []
     if not has_google_reviews or needs_hours_fallback:
         # Three cases reach this branch:
         #   a) validation failed -> Google reviews already cleared above
         #   b) validation passed but reviews are absent / too short
         #   c) validation passed, reviews fine, but hours missing
-        try:
-            web_evidence = await web_search_service.search_business_evidence(
-                business_info.company_name,
-                business_info.business_type,
-                business_info.address,
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("web_search fallback raised: %s", exc)
-            web_evidence = []
-        logger.info("web_search fallback returned %d evidence items", len(web_evidence))
+        #
+        # 근거 검색 → (영업시간 없으면) 영업시간 재검색을 **하나의 벽시계 예산** 안에서
+        # 돈다. 예전에는 무제한이어서 DDG 가 Render IP 를 막았을 때 63초짜리 분석이
+        # 나왔다(결과는 근거 0건). 예산을 넘기면 얻은 것만 쓰고 prior 로 계속 간다.
+        web_evidence, recovered_hours = await web_search_service.collect_fallback_evidence(
+            business_info.company_name,
+            business_info.business_type,
+            business_info.address,
+            need_hours=needs_hours_fallback,
+            budget_sec=settings.web_fallback_budget_sec,
+        )
+        logger.info("web_search fallback: %d evidence items, %d hour lines (budget %.1fs)",
+                    len(web_evidence), len(recovered_hours), settings.web_fallback_budget_sec)
 
-    # Opening-hours recovery. Try extracting from the evidence we already
-    # fetched first (free); only fire a targeted "... 영업시간" follow-up if
-    # nothing turned up. Google-sourced hours always win when present.
+    # Google-sourced hours always win when present; web-recovered hours fill the gap.
     hours_source = "google" if places.business_hours else "none"
-    recovered_hours: list = []
-    if needs_hours_fallback:
-        recovered_hours = web_search_service.extract_business_hours(web_evidence)
-        if not recovered_hours:
-            try:
-                hours_evidence = await web_search_service.search_hours_evidence(
-                    business_info.company_name,
-                    business_info.address,
-                )
-            except Exception as exc:  # pragma: no cover - defensive
-                logger.warning("hours-targeted search raised: %s", exc)
-                hours_evidence = []
-            recovered_hours = web_search_service.extract_business_hours(hours_evidence)
-            logger.info(
-                "hours-targeted search returned %d items, extracted %d hour lines",
-                len(hours_evidence), len(recovered_hours),
-            )
-        if recovered_hours:
-            places.business_hours = recovered_hours
-            hours_source = "web"
+    if recovered_hours:
+        places.business_hours = recovered_hours
+        hours_source = "web"
 
     # Choose the text-evidence corpus the LLM will actually score.
     if has_google_reviews and web_evidence:

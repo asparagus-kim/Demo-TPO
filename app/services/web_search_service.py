@@ -433,3 +433,52 @@ def to_place_reviews(items: List[WebEvidenceItem]) -> List[PlaceReview]:
             publish_time=None,
         ))
     return out
+
+
+# ---------------------------------------------------------------------------
+# 폴백 체인에 벽시계 예산을 건다
+# ---------------------------------------------------------------------------
+
+async def collect_fallback_evidence(
+    company_name: str,
+    business_type: str,
+    address: str,
+    *,
+    need_hours: bool,
+    budget_sec: float,
+) -> Tuple[List[WebEvidenceItem], List[str]]:
+    """웹검색 폴백 체인(근거 검색 → 필요 시 영업시간 재검색)을 **전체 예산** 안에서 돈다.
+
+    왜 예산인가 (2026-09-15 실측): DuckDuckGo 가 Render 의 데이터센터 IP 를 막으면
+    `_retrying_get` 이 2회 × 15초 타임아웃을 다 채우고, 라우터가 근거 검색과
+    영업시간 검색을 **연쇄**로 부르니 최악 64초였다. 실제로 63.4초짜리 분석이 나왔고
+    결과는 근거 0건이었다 — 60초를 기다려서 얻은 게 '없음' 이었다.
+
+    이 폴백의 가치는 낮고(있으면 좋고 없으면 prior 로 간다) 비용은 무한이었다.
+    예산을 넘기면 **그 시점까지 얻은 것만** 돌려준다 — 근거 검색이 끝난 뒤 영업시간
+    검색이 늦으면 근거는 살린다. 파이프라인은 어떤 경우에도 계속 간다.
+    """
+    evidence: List[WebEvidenceItem] = []
+    hours: List[str] = []
+
+    async def _chain() -> None:
+        nonlocal evidence, hours
+        evidence = await search_business_evidence(company_name, business_type, address)
+        if not need_hours:
+            return
+        hours = extract_business_hours(evidence)
+        if hours:
+            return
+        more = await search_hours_evidence(company_name, address)
+        hours = extract_business_hours(more)
+
+    try:
+        await asyncio.wait_for(_chain(), timeout=budget_sec)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "web search fallback exceeded %.1fs budget — continuing with %d evidence, %d hour lines",
+            budget_sec, len(evidence), len(hours),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("web search fallback raised: %s", type(exc).__name__)
+    return evidence, hours

@@ -100,3 +100,7 @@ services:
       # Places API (New) 할당량은 콘솔에서 내릴 수 없어 앱에서 직접 막는다.
       - key: PLACES_DAILY_CAP
         value: "40"
+      # 웹검색 폴백(근거 → 영업시간) 전체 벽시계 예산. DDG 가 Render IP 를 막으면
+      # 무제한일 때 63초짜리 분석이 나왔다(근거 0건). 넘기면 prior 로 계속 간다.
+      - key: WEB_FALLBACK_BUDGET_SEC
+        value: "4"

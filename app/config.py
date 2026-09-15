@@ -142,6 +142,12 @@ class Settings:
     # Kakao + 웹검색으로 degrade 해서 분석은 계속 성공하게 한다.
     places_daily_cap: int = field(default_factory=lambda: _get_int("PLACES_DAILY_CAP", 40))
 
+    # 웹검색 폴백(근거 검색 → 영업시간 재검색) 전체에 거는 벽시계 예산(초).
+    # DDG 가 서버 IP 를 막으면 재시도 2회 × 15초 × 검색 2번 = 최악 64초였다(실측 63.4초,
+    # 결과는 근거 0건). 웜 파이프라인이 2.5~4초라 4초면 '있으면 쓰고 없으면 prior' 에 충분하다.
+    web_fallback_budget_sec: float = field(
+        default_factory=lambda: float(_get_int("WEB_FALLBACK_BUDGET_SEC", 4)))
+
     # Paths
     project_root: Path = field(default_factory=lambda: PROJECT_ROOT)
     data_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data")

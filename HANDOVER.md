@@ -1191,8 +1191,8 @@ Accessed through the OpenAI-compatible endpoint, so the OpenAI SDK works with
 | Item | Value |
 |---|---|
 | Free tier | requests-per-minute and daily-token limits |
-| Guard | `LLM_REVIEW_CAP` — currently **15** in `.env` (code default 25). Keep ≤ 25. |
-| Model | `OPENAI_MODEL` — currently **`llama-3.3-70b-versatile`** (code default `gpt-4o-mini`) |
+| Guard | `LLM_REVIEW_CAP` — **6** (2026-09-15). This is now the *batch size*: all reviews go to the LLM in ONE request (`llm_service.score_reviews`). Groq free tier is bound by **OTPM = 1000 output tokens/min**, ~83 tok/review → 6 ≈ 500 tok leaves room for 2 analyses/min. Hard ceiling 12. **Do not raise to 25** — that re-creates the 429 → heuristic-fallback stall. |
+| Model | `OPENAI_MODEL` — **`qwen/qwen3.8-27b`** on Groq (code default `gpt-4o-mini`). `llama-3.3-70b-versatile` was retired by Groq ~Aug 2026; the app silently ran on the keyword heuristic for a month because `score_reviews` degrades without surfacing it. `OPENAI_BASE_URL` is now read explicitly in `config.py`; startup logs `LLM client: <model> @ <base_url>`. |
 | Base URL | the SDK reads `OPENAI_BASE_URL` from the environment; point it at Groq |
 | Failure behaviour | scoring degrades to priors only; `c_text = 0` and the fusion falls back to the prior-only vector |
 
