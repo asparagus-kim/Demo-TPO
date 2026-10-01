@@ -38,6 +38,7 @@ from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
 from . import apick_service
+from ..utils.masking import mask_name, mask_phone
 
 logger = get_logger(__name__)
 
@@ -215,6 +216,9 @@ async def resolve_identity(
             confidence=1.0,
             registered_status=hit["registered_status"],
             tax_type=hit["tax_type"],
+            # 원문은 여기서 버린다 — 마스킹된 값만 응답·URL 로 나간다.
+            representative_masked=mask_name(hit.get("representative")),
+            phone_masked=mask_phone(hit.get("phone")),
             message=f"사업자등록 상호명: {hit['company_name']}",
         )
 

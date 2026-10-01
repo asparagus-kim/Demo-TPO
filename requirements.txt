@@ -13,6 +13,7 @@ requests>=2.32
 aiofiles>=23.2
 python-multipart>=0.0.9
 cachetools>=5.4
+asyncpg>=0.30          # 보험 추정 (insurance estimate) Postgres
 
 # 테스트 (tests/ 실행에 필요 — 설치되어 있지 않아 추가)
 pytest>=8.0

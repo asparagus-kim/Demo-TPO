@@ -90,6 +90,14 @@ services:
       - key: SHEETS_TIMEOUT_SEC
         value: "30"
 
+      # ---- 보험 추정 (insurance estimate) -----------------------------------
+      # 전국 인허가 (nationwide LOCALDATA licence) Postgres — Render Postgres
+      # `yielda-insurance-db` 의 **internal** 연결 문자열. Dashboard 에서 채운다.
+      # 비어 있으면 /api/insurance/estimate 만 503 이고 음악 분석은 그대로 돈다.
+      # 데이터 적재: devFS/scripts/load_insurance_estimate.py
+      - key: INSURANCE_DATABASE_URL
+        sync: false
+
       # ---- Runtime tuning --------------------------------------------------
       - key: MOCK_MODE
         value: "0"

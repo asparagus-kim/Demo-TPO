@@ -20,8 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import get_settings
-from .routers import analyse, health
-from .services import kakao_local_service, llm_service, sheets_logger, trade_area_service
+from .routers import analyse, health, insurance
+from .services import insurance_estimate_service, kakao_local_service, llm_service, sheets_logger, trade_area_service
 from .utils import http as shared_http
 from .utils.logging import configure_logging, get_logger
 
@@ -50,6 +50,7 @@ templates = Jinja2Templates(directory=str(settings.templates_dir))
 
 app.include_router(health.router, tags=["health"])
 app.include_router(analyse.router, tags=["analyse"])
+app.include_router(insurance.router, tags=["insurance"])
 
 
 @app.on_event("startup")
@@ -100,6 +101,8 @@ async def _shutdown() -> None:
     await sheets_logger.drain()
     # 공유 httpx 연결 풀을 정리한다. 남겨 두면 종료 시 "Unclosed client" 경고가 난다.
     await shared_http.aclose()
+    # 보험 추정 (insurance estimate) DB 풀 — 열려 있지 않으면 아무것도 안 한다.
+    await insurance_estimate_service.pool.close()
 
 
 @app.get("/", response_class=HTMLResponse)

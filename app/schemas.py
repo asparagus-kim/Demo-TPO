@@ -55,6 +55,9 @@ class BizIdentity(BaseModel):
     confidence: float = 0.0
     registered_status: str = ""       # bizno가 함께 주는 사업 상태 (국세청과 교차확인용)
     tax_type: str = ""
+    # APICK 대표명·전화번호 — 마스킹된 값만 (app/utils/masking.py). 원문은 저장하지 않는다.
+    representative_masked: str = ""
+    phone_masked: str = ""
     candidates: List[BizCandidate] = Field(default_factory=list)
     needs_user_input: bool = False
     # 왜 상호명을 못 얻었는지 (biz_lookup_service.ERR_*). 빈 값이면 실패가 아니다.
@@ -245,6 +248,23 @@ class MusicRecommendation(BaseModel):
     notes: List[str] = Field(default_factory=list)
 
 
+class RegisteredBusiness(BaseModel):
+    """사업자등록 기준 신원 (registered business identity) — APICK 또는 bizno 가 준 값.
+
+    `business_info` 는 Kakao 매장 기준이라 등록 주소와 다를 수 있다. 보험 상담
+    페이지(insurance.html)가 리드 정보와 인허가 추정 매칭에 쓴다.
+    대표자명·전화번호는 개인정보라 **마스킹한 값만** 싣는다 (김** · 010-****-5678).
+    """
+    source: str = ""              # apick | bizno | user_input | mock | none
+    company_name: str = ""
+    address: str = ""             # APICK 등록 주소 (bizno 경로는 빈 값)
+    business_type: str = ""       # 국세청 업태/업종 (tax category, APICK)
+    registered_status: str = ""
+    tax_type: str = ""
+    representative_masked: str = ""
+    phone_masked: str = ""
+
+
 class AnalyseResponse(BaseModel):
     success: bool = True
     business_number: str
@@ -261,6 +281,7 @@ class AnalyseResponse(BaseModel):
     music: MusicRecommendation = Field(default_factory=MusicRecommendation)
     # 확정된 Kakao 매장 그대로 — 프론트 지도 표시·카카오맵 딥링크(place_url·location)용.
     resolved_place: Optional[PlaceCandidate] = None
+    registered_business: Optional[RegisteredBusiness] = None
     needs_input: Optional[NeedsInput] = None
     debug: Dict[str, Any] = Field(default_factory=dict)
     error: Optional[str] = None

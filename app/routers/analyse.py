@@ -39,6 +39,7 @@ from ..schemas import (
     GooglePlaces,
     NeedsInput,
     PlaceCandidate,
+    RegisteredBusiness,
     TpoProfile,
     TradeAreaMatch,
     Weather,
@@ -549,6 +550,11 @@ async def analyse(
         web_evidence=web_evidence,
         music=music,
         resolved_place=chosen,
+        registered_business=RegisteredBusiness(
+            source=identity.source, company_name=identity.company_name, address=identity.address,
+            business_type=identity.business_type, registered_status=identity.registered_status,
+            tax_type=identity.tax_type, representative_masked=identity.representative_masked,
+            phone_masked=identity.phone_masked),
         debug={
             "identity_source": identity.source,
             "identity_confidence": identity.confidence,

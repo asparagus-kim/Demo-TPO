@@ -125,6 +125,10 @@ class Settings:
     sheets_log_needs_input: bool = field(default_factory=lambda: _get_bool("SHEETS_LOG_NEEDS_INPUT", False))
     sheets_timeout_sec: float = field(default_factory=lambda: float(_get_int("SHEETS_TIMEOUT_SEC", 10)))
 
+    # 보험 추정 (insurance estimate) — 전국 인허가 (nationwide LOCALDATA licence)
+    # Postgres. 비어 있으면 /api/insurance/estimate 만 503 이고 음악 분석은 그대로 돈다.
+    insurance_database_url: str = field(default_factory=lambda: os.getenv("INSURANCE_DATABASE_URL", "").strip())
+
     # Runtime
     mock_mode: bool = field(default_factory=lambda: _get_bool("MOCK_MODE", False))
     llm_review_cap: int = field(default_factory=lambda: _get_int("LLM_REVIEW_CAP", 25))
