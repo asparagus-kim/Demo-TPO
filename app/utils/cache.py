@@ -15,6 +15,9 @@ _translate_cache: TTLCache = TTLCache(maxsize=2048, ttl=60 * 60 * 24 * 7)  # 7d
 # 사업자번호 → 상호명. 등록 상호는 거의 변하지 않고 bizno 무료 플랜이 200건/일이라
 # TTL을 길게 잡아 쿼터를 아낀다.
 _bizno_cache: TTLCache = TTLCache(maxsize=1024, ttl=60 * 60 * 24 * 3)      # 3d
+# APICK 은 호출당 50포인트의 유료 API 다. 등록 주소·좌표는 거의 변하지 않으므로
+# bizno 보다도 TTL 을 길게 잡아 중복 과금을 막는다.
+_apick_cache: TTLCache = TTLCache(maxsize=2048, ttl=60 * 60 * 24 * 7)      # 7d
 
 
 def get_cache(name: str) -> TTLCache:
@@ -25,6 +28,7 @@ def get_cache(name: str) -> TTLCache:
         "analysis": _analysis_cache,
         "translate": _translate_cache,
         "bizno": _bizno_cache,
+        "apick": _apick_cache,
     }
     if name not in mapping:
         raise KeyError(f"Unknown cache: {name}")

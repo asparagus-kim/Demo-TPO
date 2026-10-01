@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -57,6 +58,16 @@ CANDIDATE_LIMIT = 8          # 사용자에게 보여줄 최대 후보 수
 AUTO_ACCEPT_SCORE = 0.80     # 1등 점수가 이 이상이고
 AUTO_ACCEPT_MARGIN = 0.15    # 2등과 이만큼 벌어지면 자동 확정
 SINGLE_HIT_MIN_SCORE = 0.55  # 후보가 1건일 때는 기준을 낮춘다
+
+# 좌표 기반 확정 기준 (APICK 이 위·경도를 줄 때만 쓰인다).
+#
+# 2026-10-01 광진구 49곳 실측: 상호명만으로 보류됐던 20곳에 좌표를 붙이자
+# 17곳이 자동 확정됐다. 정답은 **3~8m**, 2등은 153m~238km 였다 — 경계가 애매한
+# 분포가 아니라 두 덩어리로 완전히 갈린다. 그래서 임계값은 넉넉하게 잡아도
+# 안전하고, 오히려 '가까운 두 곳' 을 잘못 고르지 않는 쪽이 중요하다.
+LOCATION_MAX_M = 150.0        # 1등이 이보다 멀면 같은 매장이라고 보지 않는다
+LOCATION_RUNNERUP_RATIO = 3.0  # 2등이 1등의 3배 이상 멀거나
+LOCATION_RUNNERUP_GAP_M = 200.0  # 절대 거리로 이만큼 벌어지면 자동 확정
 
 # category_group_code → 사람이 읽는 업종군 (참고용)
 CATEGORY_GROUPS = {
@@ -226,6 +237,57 @@ def score_candidates(
         c.score = round(s, 4)
     candidates.sort(key=lambda c: (-c.score, c.place_name))
     return candidates
+
+
+def haversine_m(a: Dict[str, float], b: Dict[str, float]) -> float:
+    """두 좌표 사이의 대원 거리(m)."""
+    r = 6371000.0
+    lat1, lng1 = math.radians(a["lat"]), math.radians(a["lng"])
+    lat2, lng2 = math.radians(b["lat"]), math.radians(b["lng"])
+    dlat, dlng = lat2 - lat1, lng2 - lng1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def pick_by_location(
+    candidates: List[PlaceCandidate],
+    origin: Optional[Dict[str, float]],
+) -> Tuple[Optional[PlaceCandidate], str]:
+    """등록 주소 좌표에서 가장 가까운 후보를 고른다. 못 고르면 (None, "ambiguous").
+
+    상호명 점수로는 동명 매장을 가를 수 없다(둘 다 1.000, 격차 0.000). 좌표가
+    있으면 이 함수가 먼저 판단하고, 실패하면 호출자가 기존 이름/주소 점수
+    경로로 degrade 한다 — 즉 이 함수는 절대 상황을 나쁘게 만들지 않는다.
+
+    좌표가 없는 후보는 **건너뛴다**. 거리 0으로 취급하면 좌표 없는 후보가
+    항상 1등이 되어 엉뚱한 매장을 확정하게 된다.
+    """
+    if not origin or not candidates:
+        return None, "ambiguous"
+
+    ranked = sorted(
+        ((haversine_m(origin, c.location), c) for c in candidates if c.location),
+        key=lambda pair: pair[0],
+    )
+    if not ranked:
+        return None, "ambiguous"
+
+    best_m, best = ranked[0]
+    if best_m > LOCATION_MAX_M:
+        logger.info("좌표 확정 실패: 가장 가까운 후보가 %.0fm — 같은 매장으로 보지 않는다", best_m)
+        return None, "ambiguous"
+
+    if len(ranked) > 1:
+        second_m = ranked[1][0]
+        separated = (second_m >= best_m * LOCATION_RUNNERUP_RATIO
+                     or second_m - best_m >= LOCATION_RUNNERUP_GAP_M)
+        if not separated:
+            logger.info("좌표 확정 실패: 1등 %.0fm · 2등 %.0fm — 좌표로는 못 가른다",
+                        best_m, second_m)
+            return None, "ambiguous"
+
+    logger.info("좌표로 매장 확정: '%s' (%.0fm)", best.place_name, best_m)
+    return best, "location"
 
 
 def pick_best(candidates: List[PlaceCandidate]) -> Tuple[Optional[PlaceCandidate], str]:

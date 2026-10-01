@@ -44,6 +44,7 @@ SECRET_ENV_NAMES: Tuple[str, ...] = (
     "KMA_API_KEY",
     "KAKAO_REST_API_KEY",
     "BIZNO_API_KEY",
+    "APICK_API_KEY",
     "GOOGLE_MAPS_API_KEY",
     "OPENAI_API_KEY",
     # 이 둘은 '엔드포인트'처럼 보이지만 실제로는 자격증명이다. Apps Script 웹앱

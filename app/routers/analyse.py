@@ -200,7 +200,13 @@ async def analyse(
         # 사용자가 후보를 고른 재요청. 목록에 없으면(캐시 만료 등) 그냥 자동 선택으로 넘어간다.
         chosen = next((c for c in place_candidates if c.place_id == payload.place_id), None)
     if chosen is None:
-        chosen, pick_reason = kakao_local_service.pick_best(place_candidates)
+        # 등록 주소 좌표가 있으면(APICK) 그걸로 먼저 가른다 — 동명 매장은 이름
+        # 점수가 둘 다 1.000 이라 격차 0.000 이고, 이름만으로는 영원히 못 고른다.
+        # 좌표로 못 고르면 기존 이름/주소 점수 경로로 그대로 내려간다.
+        chosen, pick_reason = kakao_local_service.pick_by_location(
+            place_candidates, identity.location)
+        if chosen is None:
+            chosen, pick_reason = kakao_local_service.pick_best(place_candidates)
     else:
         pick_reason = "user"
 

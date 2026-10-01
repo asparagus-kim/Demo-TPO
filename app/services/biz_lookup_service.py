@@ -15,8 +15,12 @@
 ## 체인
 
     0. 사용자가 상호명을 직접 입력했으면 그것으로 확정 (재요청 경로)
-    1. bizno  (BIZNO_API_KEY 있을 때)
-    2. 실패 → needs_user_input=True 로 돌려주고 호출자가 입력을 요청
+    1. APICK (APICK_API_KEY 있을 때) — 상호명 + **주소 + 좌표**
+    2. bizno (BIZNO_API_KEY 있을 때) — 상호명만
+    3. 실패 → needs_user_input=True 로 돌려주고 호출자가 입력을 요청
+
+APICK 이 1순위인 이유는 좌표다. 상호명만으로는 동명 매장을 가를 수 없어
+49곳 중 20곳이 '매장 선택' 화면으로 떨어졌다 (`apick_service` 설명 참고).
 
 NPS는 후순위(구현 순서 10번)라 아직 구현하지 않는다 — 활용신청도 미완이다.
 """
@@ -33,6 +37,7 @@ from ..schemas import BizCandidate, BizIdentity
 from ..utils import http as shared_http
 from ..utils.cache import get_cache
 from ..utils.logging import get_logger
+from . import apick_service
 
 logger = get_logger(__name__)
 
@@ -41,6 +46,7 @@ _BIZNO_GAP_SEC = 0.4
 _bizno_lock = asyncio.Lock()
 
 SOURCE_USER = "user_input"
+SOURCE_APICK = "apick"
 SOURCE_BIZNO = "bizno"
 SOURCE_MOCK = "mock"
 SOURCE_NONE = "none"
@@ -195,7 +201,24 @@ async def resolve_identity(
         logger.info("biz_lookup -> MOCK for %s", digits)
         return _mock_identity(digits)
 
-    # 1) bizno
+    # 1) APICK — 주소·좌표까지 준다. 좌표가 있으면 동명 매장을 묻지 않고 가른다
+    #    (2026-10-01 실측: 보류 20곳 중 17곳 자동 확정, 정답 3~8m).
+    hit = await apick_service.lookup(digits)
+    if hit:
+        logger.info("biz_lookup: apick hit '%s'", hit["company_name"])
+        return BizIdentity(
+            company_name=hit["company_name"],
+            business_type=hit["business_type"],
+            address=hit["address"],
+            location=hit["location"],
+            source=SOURCE_APICK,
+            confidence=1.0,
+            registered_status=hit["registered_status"],
+            tax_type=hit["tax_type"],
+            message=f"사업자등록 상호명: {hit['company_name']}",
+        )
+
+    # 2) bizno — APICK 이 없거나(키 미설정) 실패했을 때의 기존 경로
     parsed, lookup_error = await _lookup_bizno(digits)
     if parsed and parsed.get("company_name"):
         logger.info("biz_lookup: bizno hit '%s' (%s)",
@@ -211,7 +234,7 @@ async def resolve_identity(
             message=f"사업자등록 상호명: {parsed['company_name']}",
         )
 
-    # 2) 실패 → 사용자 입력 요청. 어느 쪽이든 상호명을 직접 받으면 분석은 이어지지만,
+    # 3) 실패 → 사용자 입력 요청. 어느 쪽이든 상호명을 직접 받으면 분석은 이어지지만,
     #    문구는 원인을 정직하게 말해야 한다(번호 탓 vs 조회 서비스 탓).
     logger.info("biz_lookup: 상호명 확보 실패 (%s, %s) — 사용자 입력 필요",
                 digits, lookup_error)

@@ -69,6 +69,8 @@ class Settings:
     kma_api_key: str = field(default_factory=lambda: _get_service_key("KMA_API_KEY"))
     kakao_rest_api_key: str = field(default_factory=lambda: os.getenv("KAKAO_REST_API_KEY", ""))
     bizno_api_key: str = field(default_factory=lambda: os.getenv("BIZNO_API_KEY", ""))
+    # APICK — bizno 무료 플랜에 없는 주소·좌표까지 준다. 호출당 50포인트의 유료 API.
+    apick_api_key: str = field(default_factory=lambda: os.getenv("APICK_API_KEY", ""))
 
     # Endpoints
     nts_api_url: str = field(default_factory=lambda: os.getenv(
@@ -93,6 +95,9 @@ class Settings:
     ))
     bizno_api_url: str = field(default_factory=lambda: os.getenv(
         "BIZNO_API_URL", "https://bizno.net/api/fapi",
+    ))
+    apick_biz_detail_url: str = field(default_factory=lambda: os.getenv(
+        "APICK_BIZ_DETAIL_URL", "https://apick.app/rest/biz_detail",
     ))
     kakao_keyword_url: str = field(default_factory=lambda: os.getenv(
         "KAKAO_KEYWORD_URL", "https://dapi.kakao.com/v2/local/search/keyword.json",
