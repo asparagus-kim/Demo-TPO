@@ -1,0 +1,10 @@
+name = "yielda-render-keepalive"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[triggers]
+# Run every 10 minutes so Render's free tier (15-min idle timeout) never sleeps
+crons = ["*/10 * * * *"]
+
+[vars]
+YIELDA_API_BASE = "https://yielda-tpo-api.onrender.com"
