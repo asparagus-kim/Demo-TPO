@@ -64,7 +64,9 @@ def _clear_cache():
     ("체력단련장 운영업", "fitness"),
     ("헬스장", "fitness"),
     ("필라테스 스튜디오", "fitness"),
-    ("음악 및 기타 오디오물 출판업", None),
+    ("소프트웨어 개발 및 공급업", "office"),
+    ("경영 컨설팅업", "office"),
+    ("금속 주조업", None),
     ("", None),
     (None, None),
 ])

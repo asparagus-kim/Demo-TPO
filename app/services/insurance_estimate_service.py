@@ -59,9 +59,12 @@ class EstimateUnavailable(RuntimeError):
 
 
 def _db_errors() -> tuple[type[BaseException], ...]:
-    import asyncpg
+    try:
+        import asyncpg
 
-    return (OSError, asyncio.TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
+        return (OSError, asyncio.TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
+    except ImportError:
+        return (OSError, asyncio.TimeoutError)
 
 
 class _Pool:

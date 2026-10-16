@@ -212,6 +212,45 @@ async def analyse(
         pick_reason = "user"
 
     if chosen is None:
+        # Kakao POI 미등록 사업장 / 오피스 / 신규 매장 폴백:
+        # 키워드 검색 결과가 없거나(empty), 일치하는 매장이 없더라도(low_score),
+        # 사업자등록 주소(APICK) 또는 사용자가 입력한 주소가 있으면 주소 지오코딩으로 매장을 합성한다.
+        eff_addr = (payload.address_hint or identity.address or "").strip()
+        if eff_addr and (not place_candidates or pick_reason in ("empty", "low_score")):
+            fallback_loc = identity.location
+            if not fallback_loc:
+                fallback_loc = await kakao_local_service.geocode(eff_addr)
+
+            if fallback_loc:
+                detected_group = music_service.detect_industry_group(
+                    identity.business_type, identity.company_name
+                )
+                assigned_type = (
+                    identity.business_type
+                    or (music_service.GROUP_LABELS_KO.get(detected_group) if detected_group else None)
+                    or "오피스"
+                )
+                category_suffix = assigned_type if assigned_type else "오피스"
+                chosen = PlaceCandidate(
+                    place_id=f"unlisted-{digits}",
+                    place_name=identity.company_name,
+                    category_name=f"서비스,산업 > 사무실 > {category_suffix}",
+                    category_group_code="",
+                    business_type=assigned_type,
+                    address=eff_addr,
+                    region_address=eff_addr,
+                    phone=identity.phone_masked or "",
+                    place_url="",
+                    location=fallback_loc,
+                    score=1.0,
+                )
+                pick_reason = "unlisted_address_fallback"
+                logger.info(
+                    "Kakao POI 미등록 사업장 — 주소(%s) 지오코딩 및 '%s' 매장으로 자동 합성 확정",
+                    eff_addr, assigned_type,
+                )
+
+    if chosen is None:
         # 자동 확정 불가 → 사용자가 고르게 한다. 후보에 주소가 함께 뜨므로
         # 점주는 자기 가게를 바로 알아본다.
         msg = {
@@ -485,6 +524,10 @@ async def analyse(
         provenance_notes.append(
             f"Google이 영업시간을 제공하지 않아 웹 검색으로 {len(recovered_hours)}건을 보강했습니다."
         )
+    if pick_reason == "unlisted_address_fallback":
+        provenance_notes.append(
+            "카카오맵 장소 미등록 사업장(오피스·신규 매장)으로, 등록된 주소 기반 상권 및 오피스 환경 분석을 적용했습니다."
+        )
 
     # '분석 근거' 템플릿 슬롯 1-2: 리뷰 코퍼스에서 LLM이 뽑은 키워드의 언급 빈도.
     # 키워드는 리뷰당 최대 5개로 중복 제거되어 있으므로 count ≈ 언급 리뷰 수.
@@ -533,6 +576,11 @@ async def analyse(
             ambience.explanations.insert(
                 0,
                 "📚 텍스트 근거가 부족하여 상권/업종 prior 기반으로 추정한 결과입니다."
+            )
+        if pick_reason == "unlisted_address_fallback":
+            ambience.explanations.insert(
+                0,
+                "🏢 카카오맵 장소 미등록 사업장으로, 등록 주소의 주변 상권 및 오피스 업무 환경을 기준으로 분석했습니다."
             )
 
     response = AnalyseResponse(

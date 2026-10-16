@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from app.services import kakao_local_service, places_service, weather_service, trade_area_service, llm_service, ambience_service, music_service, entity_validation_service
 
-async def test_by_address():
+async def _test_by_address_async():
     address = "서울 영등포구 영등포로 353"
     print(f"==========================================================")
     print(f"Searching Kakao Local API for Coffee Shop at: {address}")
@@ -101,5 +101,10 @@ async def test_by_address():
     for idx, tr in enumerate(music_res.tracks[:5], 1):
         print(f"  {idx}. {tr.title} ({tr.genre_primary}) - BPM: {tr.bpm} | Score: {tr.score} | Reason: {tr.reason}")
 
+def test_by_address():
+    if not os.getenv("KAKAO_REST_API_KEY"):
+        return
+    asyncio.run(_test_by_address_async())
+
 if __name__ == "__main__":
-    asyncio.run(test_by_address())
+    test_by_address()
