@@ -999,3 +999,99 @@ Kakao 지도를 검색한 결과다. 사업자번호 중간 2자리로 원인이
    `본점`·`1호점`은 지역이 아니므로 제외.
    주의: 지점명은 통칭 지명이라 도로명 주소에 나타나지 않으므로 **변별력은 후보 매장명에서 나온다**
    (같은 브랜드의 다른 지점을 가리는 용도).
+
+## Review link repair — 2026-10-21
+
+Status: done
+Owner / branch / working directory: Codex; backend `feat/kakao-blog-storefront-scoring` (`7a6200c`), nested frontend `master` (`ddcf40c`); `/Users/mac/Desktop/yieldus/yielda_tpo_demo`.
+Request: check the result page review section and repair the DuckDuckGo blog link returning nginx HTTP 400; user supplied the affected business number for browser verification.
+
+### Outcome and scope
+
+- Return direct HTTP(S) source URLs from DuckDuckGo search results, preserving the post's query parameters.
+- Normalize old saved evidence links when rendering cards, classify badges by the destination hostname, and leave Google review content unchanged.
+- Show every remaining review when expanding the section; the prior `slice(2, 6)` displayed only four despite advertising the full remaining count. Use a generic review label because the section contains Google, blog, and other web evidence.
+- Out of scope: store matching, review relevance/scoring, provider selection, Google review links, deployment, and unrelated pre-existing changes.
+
+### Plan and Definition of Done
+
+- [x] Reproduce the supplied redirect failure — browser showed `400 Bad Request` and `nginx`.
+- [x] Add failing parser regression tests, then implement source URL extraction and saved-result rendering correction.
+- [x] Verify parser/URL edge cases and frontend build — 29 focused pytest cases, 4 Node test groups, and final `npm run build` passed.
+- [x] Open the affected result card and verify its original Naver article loads — browser opened the `sso_ii` post `222152065862` directly with its article title/content visible.
+- [x] Verify the expanded count and final frontend checks — the affected result showed 10 web cards plus 1 Google card; all 10 saved web links were DuckDuckGo wrappers, but all 10 rendered links were direct and no redirect links remained. Final build and focused ESLint passed.
+- [x] Independent review and handoff — reviewer caught repeated HTML decoding, then confirmed both backend and frontend fixes after destination-preservation/idempotence tests were added. No unresolved findings in the reviewed scope.
+
+### Verification and handoff
+
+- Environment/date: local running backend/frontend, 2026-10-21 KST, branches/commits above plus existing and task-local uncommitted changes.
+- `python -m pytest -q tests/test_web_search_links.py tests/test_web_fallback_budget.py tests/test_blog_scoring.py`: **29 passed**.
+- In `frontend/`, `node --experimental-strip-types --test tests/review-links.test.mjs`: **4 passed**; `npm run build`: **passed**; `npx eslint src/lib/review-links.ts src/components/yielda/result-view.tsx`: **passed**.
+- Live `/api/analyse` response for the user-supplied case: HTTP 200/success, 10 web evidence items, zero DuckDuckGo redirects, 3 Google review records. The UI retains its existing minimum-length rule and displays one of those Google reviews.
+- Final browser click on the repaired result card opened the original Naver `PostView.nhn` page with the expected article title, without nginx 400. The affected frontend result was left open; temporary reproduction/article tabs were closed.
+- `git diff --check -- app/services/web_search_service.py` passed; the new test/helper files had no trailing whitespace. Full unrelated test suites and deployment were not run.
+- Implementation complete, locally verified, independently reviewed; uncommitted and unpushed in both repositories. Next action: user reviews the running result page at `http://127.0.0.1:5173`.
+
+### Decisions and blockers
+
+- Preserve the user's backend and nested frontend work. No branch switch, commit, push, or deployment.
+- Test-first evidence: all 12 new Python cases failed before the fix (four reproduced raw redirect/HTML link leakage); the focused set passed after it.
+- Existing environment warnings: pandas optional numexpr/bottleneck versions; Vite config/chunk-size notices. Workspace-wide whitespace checking also reports pre-existing CRLF/trailing whitespace outside this fix.
+- Query implementation clarification (2026-10-21, inspected current source for user explanation): search runs when usable Google reviews or consistent-place hours are missing. The base query joins company name, industry, and address; Kakao adds clean-brand/branch/dong/district variants and stops at the first accepted batch. Provider order is configured Kakao Blog, SerpAPI, Google CSE, then DuckDuckGo; the first nonempty provider wins. Only Kakao currently applies the storefront/spam/geographic blog filters. General fallbacks have no blog-only site constraint and may include business directories; relevance changes remain outside this repair.
+
+## Blog search relevance improvement — 2026-10-21
+
+Status: awaiting review (implementation complete, locally verified, independently reviewed; uncommitted and unpushed).
+Owner / branch / working directory: Codex (2026-10-21, interrupted mid-implementation) → Claude Code (2026-10-22, completion); backend `feat/kakao-blog-storefront-scoring` (`7a6200c` + uncommitted work); nested frontend `master` (`ddcf40c`, not changed by this task); `/Users/mac/Desktop/yieldus/yielda_tpo_demo`.
+Request: implement [the plan](./BLOG_SEARCH_IMPROVEMENT_PLAN.md) ([Claude prompt](./CLAUDE_BLOG_SEARCH_PROMPT.md)). On 2026-10-22 the user asked Claude to continue Codex session `01a143c3-…` where it stopped.
+
+### Outcome
+
+- `app/services/blog_search_policy.py` (new): canonical search context from the selected Kakao store (brand, explicit branch, structured address tokens; at most 3 review queries; never a business number) and one acceptance policy for every provider and cache read. Supported Naver/Tistory post URLs only; complete brand; branch and 동/road agreement (a shared 구 is not enough when the 동 is known); spam, directory, related-post-widget and no-experience rejection. Naver `(blogId, logNo)` / Tistory path deduplication runs before ranking and the 12-item limit. Publisher labels are `naver_blog` / `kakao_blog`.
+- `app/services/search_budget.py` (new): one deadline (`WEB_FALLBACK_BUDGET_SEC`) and 8 total requests, counting redirect hops. Reviews may use at most 6 when hours are needed. No hidden retries; API keys and headers are never forwarded to another origin.
+- `web_search_service.py`: ordered passes Kakao → SerpAPI → CSE → DuckDuckGo. General engines are scoped to `site:blog.naver.com` / `site:tistory.com`. A batch with accepted posts stops the search; a rejected-only batch continues. The hours search uses store-verified pages for hours only. Cache keys are versioned and separate reviews from hours; cached results are rechecked. DuckDuckGo is called at `html.duckduckgo.com` (the old URL spent a request on a redirect).
+- `analyse.py`: the analysis cache key includes `POLICY_VERSION` (prefix `analyse:{digits}:` kept for `/api/reanalyse`). Safe aggregate diagnostics are in `debug.blog_search`. The hours note distinguishes blog-review from web-page origin. A store the user picked skips the registered-name check.
+- Blog search abstains (no requests) for a generic or missing name, a business number in the name, conflicting address tokens, missing locality, or a registered name incompatible with the selected store.
+- The public response shape and the frontend are unchanged. Results already saved in the browser need a fresh analysis.
+
+### Verification and handoff
+
+- Environment/date: local backend `127.0.0.1:8077` (tmux `yielda-blog`, started by Claude 2026-10-22) and frontend `127.0.0.1:5173` (tmux `yielda-fe`, started by the user), 2026-10-22 KST.
+- `python -m pytest -q tests`: **390 passed** (305 before this task). The plan's focused suites plus the new policy/flow/budget suites: **171 passed**. The root-level `test_location_search.py` failure predates this task and is outside `tests/`.
+- Frontend: `node --experimental-strip-types --test tests/review-links.test.mjs` **4 passed**; `npm run build` **passed**; focused ESLint on `review-links.ts` and `result-view.tsx` **passed**.
+- Live `309-30-71165` (fresh analysis, browser): 0 blog cards, `identity_reason=registered_name_conflict`, 0 search requests; "분석 근거 · 텍스트 근거 없음" plus the existing Google review card. **Upstream store-resolution conflict, not repaired here:** the registered business is 언니커피 at 구천면로 315 (암사동, APICK), but Kakao auto-selected 뽕쓰언니 at 구천면로 251 (천호동).
+- Live `524-13-02294` (생마차 구의역점): 1 Kakao request; 8 accepted unique Naver posts. The UI showed "총 9건" (1 Google + 8 blog) and "블로그 리뷰 8건", with 8 direct links and no DuckDuckGo redirects. Clicking the first card opened the original Naver article. A related-post widget about another bar was rejected.
+- Live `883-27-00926` (커피나와): 1 request, 1 accepted post.
+- Independent review (fresh agent, 2026-10-22): one P1 (a different 동 in the same 구 was accepted) plus P3 items (Tistory platform subdomains, generic registered-name containment, DuckDuckGo snippet mis-pairing, a dead cache helper). All were fixed with regression tests. Codex's earlier reviewer findings (hours continuation, same-district neighborhood, 경기 광주시) were fixed with tests before the handoff.
+- Next action: the user reviews the running result page. Commit/push only when authorized. The 309-30-71165 store mismatch needs its own task.
+
+### Decisions and blockers
+
+- 2026-10-22 (Claude, during completion): Codex required the registered and storefront names to be identical, which disabled blog search for corporate names such as `주식회사 몸가짐 휘트니스필라테스구의` → `몸가짐휘트니스 구의점`. It is now relaxed to containment of non-generic names. The registered name is never used as a matching alias.
+- Hours may come from any store-verified web page, as the plan allows; there is no host allowlist.
+- `/api/reanalyse` clears the analysis cache but not the 6-hour search cache (`blogsearch:` keys, rechecked on every read), matching previous behavior.
+- Known heuristic limits: Korean particle and branch boundaries. The shorthand `광주` in posts about 경기 광주시 is rejected (conservative). Franchise operators whose corporate name is unrelated to the store abstain unless the user picks the store. In mock mode the hours note reads 블로그 리뷰로.
+- Rollback: remove the two new modules and their tests, and revert this task's hunks in `web_search_service.py` and `analyse.py`. Keep the link repair, card expansion and other earlier work.
+
+### Follow-up — always show blogs, expandable Google cards (2026-10-22)
+
+- User decision (2026-10-22): always show Naver blogs on the result page, but do not add them to music matching. Make Google review cards expandable.
+- Backend (`analyse.py`): blog search now always runs.
+  - With usable Google reviews, blogs are display-only. Scoring, keywords and `text_source` stay Google-only. The search runs alongside LLM scoring. The note "블로그 리뷰 N건은 참고용…" and `debug.blog_evidence_role=display_only` record this.
+  - Without usable Google reviews, the existing fallback is unchanged: blogs are scored (`scored`).
+  - `text_source="mixed"` is no longer produced.
+- Policy fix: spaced or shortened branch labels of the same store (`어린이대공원 본점` for `어린이대공원본점`, `구의점` for `구의역점`) no longer count as conflicting branches.
+- Frontend (`result-view.tsx`): a Google card whose text is cut to 2 lines toggles to full text on click or Enter/Space (`aria-expanded`, 전체 보기/접기). Blog cards still open the original post.
+- Verification: `tests/test_blog_display_role.py` (3, red before the change) plus the branch-label cases. `python -m pytest -q tests`: **398 passed**. Frontend typecheck, focused ESLint and Prettier check passed.
+- Live `580-51-01230` (원즈커피 어린이대공원본점): `text_source=google_reviews`, `reviews_used=5`, 8 display-only Naver posts (3 before the branch fix; 1 search request). The UI showed "총 13건". All 5 Google cards expanded and collapsed by click and Enter.
+- User decision (2026-10-22, later): list blogs before Google reviews, because Korean owners value Naver blogs. Keep at most 4 accurate blogs.
+  - `DEFAULT_MAX_RESULTS` is 4; providers still return 20 candidates (`_CANDIDATES_PER_REQUEST`), and the best-ranked 4 are kept.
+  - Live `580-51-01230`: "총 9건" = 4 Naver blogs first, then 5 Google cards. The note reads "블로그 리뷰 4건은 참고용…".
+  - `python -m pytest -q tests`: 399 passed. Frontend typecheck, ESLint and Prettier passed.
+- Accuracy audit (2026-10-22, user asked how accurate the blogs are). The live blog search ran for 14 stores from the local analysis cache and 3 franchise branches (메가커피, 스타벅스, 빽다방). Each accepted post was judged by hand from its title, snippet and address.
+  - First run: 1 of 51 accepted posts was wrong. An eyelash-salon review used "빽다방 있는 건물 3층" as a landmark.
+  - Fix: the store must be named in the post title (not as a 옆/근처/건물 landmark), or the snippet must carry the store's place card (name followed by its own road address, as Naver diaries do).
+  - Second run: 51 accepted, 0 wrong store. About 5 are informational or promotional posts about the right store, not personal visits.
+  - Tests: 401 passed.
+  - Limits: judged from search snippets only, not full posts; small sample, mostly 광진구.
+- Observed, not caused by this change: Kakao `surroundings` took about 20 s on one run, with some category counts at 0.

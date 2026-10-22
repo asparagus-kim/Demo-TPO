@@ -395,11 +395,43 @@ async def search_candidates(
             logger.info("Kakao '%s' → %d건", q, len(docs))
             break
 
+    # 법인 등기상호(예: '주식회사 몸가짐 휘트니스필라테스구의')가 매장 간판명('몸가짐휘트니스 구의점')과
+    # 달라 검색 결과가 0건일 때, 핵심 상호명과 업종 키워드로 점진적 폴백을 시도한다.
+    if not docs:
+        fallback_queries = _expand_storefront_fallbacks(bare, hint)
+        for fq in fallback_queries:
+            docs = await _keyword_search(client, fq, size)
+            if docs:
+                logger.info("Kakao 법인상호 폴백 '%s' → %d건", fq, len(docs))
+                break
+
     cands = score_candidates(name, [_doc_to_candidate(d) for d in docs],
                              address_hint=hint, branch_hint=branch)
     cands = cands[:CANDIDATE_LIMIT]
     cache[ck] = list(cands)
     return cands
+
+
+def _expand_storefront_fallbacks(bare_name: str, hint: Optional[str]) -> List[str]:
+    """법인 등기상호에서 핵심 간판명과 업종 키워드를 추출해 폴백 쿼리를 만든다."""
+    sgg = _sigungu(hint) if hint else ""
+    alts: List[str] = []
+    tokens = bare_name.split()
+    if len(tokens) >= 2:
+        first = tokens[0]
+        # 2번째 토큰에 업종 단어가 포함되어 있으면 접합 및 분리 검색어 생성
+        for ind in ("휘트니스", "피트니스", "헬스", "필라테스", "베이커리", "카페", "포차", "식당", "주점", "헤어", "미용실"):
+            if ind in tokens[1]:
+                if sgg:
+                    alts.append(f"{first}{ind} {sgg}".strip())
+                    alts.append(f"{first} {ind} {sgg}".strip())
+                alts.append(f"{first}{ind}")
+                alts.append(f"{first} {ind}")
+                break
+        if sgg:
+            alts.append(f"{first} {sgg}".strip())
+        alts.append(first)
+    return alts
 
 
 def _sigungu(addr: str) -> str:

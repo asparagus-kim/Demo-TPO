@@ -9,8 +9,8 @@ Order:
     6. Google Places — 리뷰·영업시간만 (키 없음/일별 상한 시 degrade)
     6.1 동일 업체 검증 (Kakao 확정 정보 vs Google 후보)
         - if inconsistent: discard Google hours / reviews
-    6.2 리뷰·영업시간 부족 시 웹검색 보강
-        - Places API (New)는 리뷰를 매장당 5건만 주므로 상시 보강 경로다
+    6.2 블로그 검색 — 항상 화면 표시용으로 찾고, Google 리뷰가 없을 때만 스코어링에 쓴다
+        - Places API (New)는 리뷰를 매장당 5건만 준다
     7. KMA weather — 좌표는 Kakao가 canonical
     8. LLM scoring of the chosen text corpus (Google / web / mixed / none)
     9. TPO profile + ambience fusion + provenance reporting
@@ -47,6 +47,8 @@ from ..schemas import (
 from ..services import (
     ambience_service,
     biz_lookup_service,
+    blog_scoring_service,
+    blog_search_policy,
     entity_validation_service,
     kakao_local_service,
     llm_service,
@@ -73,9 +75,9 @@ def _cache_key(digits: str, *, company_name: str = "", place_id: str = "") -> st
     """
     extra = f"{company_name}|{place_id}".strip("|")
     if not extra:
-        return f"analyse:{digits}:-"
+        return f"analyse:{digits}:{blog_search_policy.POLICY_VERSION}:-"
     digest = hashlib.sha1(extra.encode("utf-8")).hexdigest()[:8]
-    return f"analyse:{digits}:{digest}"
+    return f"analyse:{digits}:{blog_search_policy.POLICY_VERSION}:{digest}"
 
 
 @router.post("/api/analyse", response_model=AnalyseResponse)
@@ -401,24 +403,40 @@ async def analyse(
 
     web_evidence: list = []
     recovered_hours: list = []
-    if not has_google_reviews or needs_hours_fallback:
-        # Three cases reach this branch:
-        #   a) validation failed -> Google reviews already cleared above
-        #   b) validation passed but reviews are absent / too short
-        #   c) validation passed, reviews fine, but hours missing
-        #
-        # 근거 검색 → (영업시간 없으면) 영업시간 재검색을 **하나의 벽시계 예산** 안에서
-        # 돈다. 예전에는 무제한이어서 DDG 가 Render IP 를 막았을 때 63초짜리 분석이
-        # 나왔다(결과는 근거 0건). 예산을 넘기면 얻은 것만 쓰고 prior 로 계속 간다.
-        web_evidence, recovered_hours = await web_search_service.collect_fallback_evidence(
+    web_search_diagnostics: dict = {}
+    target_store_name = chosen.place_name if chosen else business_info.company_name
+
+    def _blog_search(need_hours: bool):
+        # 하나의 벽시계 예산(WEB_FALLBACK_BUDGET_SEC) 안에서 돈다. 예전에는 무제한이어서
+        # DDG 가 Render IP 를 막았을 때 63초짜리 분석이 나왔다. 넘기면 얻은 것만 쓴다.
+        return web_search_service.collect_fallback_evidence(
             business_info.company_name,
             business_info.business_type,
             business_info.address,
-            need_hours=needs_hours_fallback,
+            need_hours=need_hours,
             budget_sec=settings.web_fallback_budget_sec,
+            store_name=target_store_name,
+            region_address=(chosen.region_address if chosen else "") or "",
+            place_id=chosen.place_id if chosen else "",
+            # A store the user picked is authoritative; otherwise the registered
+            # name must be compatible with it or blog search abstains.
+            registered_name="" if pick_reason == "user" else None,
+            diagnostics=web_search_diagnostics,
         )
-        logger.info("web_search fallback: %d evidence items, %d hour lines (budget %.1fs)",
-                    len(web_evidence), len(recovered_hours), settings.web_fallback_budget_sec)
+
+    # Blog posts are always searched so the result page can show them. They feed
+    # scoring only when Google has no usable reviews (fallback); otherwise they are
+    # display-only and the music match stays Google-review based.
+    display_only_blogs = False
+    if not has_google_reviews or needs_hours_fallback:
+        # Must finish before scoring: either the text corpus (no Google reviews)
+        # or the opening hours (Google hours missing) depend on it.
+        web_evidence, recovered_hours = await _blog_search(needs_hours_fallback)
+        logger.info("web_search fallback: %d evidence items, %d hour lines (budget %.1fs, store='%s')",
+                    len(web_evidence), len(recovered_hours), settings.web_fallback_budget_sec, target_store_name)
+    else:
+        # Display-only: runs alongside LLM scoring below so it adds little latency.
+        display_only_blogs = True
 
     # Google-sourced hours always win when present; web-recovered hours fill the gap.
     hours_source = "google" if places.business_hours else "none"
@@ -428,11 +446,9 @@ async def analyse(
 
     _mark("web_fallback")
 
-    # Choose the text-evidence corpus the LLM will actually score.
-    if has_google_reviews and web_evidence:
-        review_corpus = list(places.reviews) + web_search_service.to_place_reviews(web_evidence)
-        text_source = "mixed"
-    elif has_google_reviews:
+    # Choose the text-evidence corpus that is actually scored. Blogs never join
+    # Google reviews here; with Google reviews present they are display-only.
+    if has_google_reviews:
         review_corpus = list(places.reviews)
         text_source = "google_reviews"
     elif web_evidence:
@@ -453,18 +469,36 @@ async def analyse(
                     or (await kakao_local_service.geocode(business_info.address)))
         weather = await weather_service.fetch_weather(location)
 
-    # -------- Step 7: LLM review scoring
+    # -------- Step 7: Review scoring
+    # Google 리뷰는 LLM(Groq)으로 스코어링하고, 카카오/네이버 블로그 및 웹 검색
+    # 텍스트는 인메모리 순수 파이썬 키워드·부정어 분석기로 스코어링한다.
+    # (외부 AI 전송 0회 · API 재판매/DB 영구적재 금지 ToS 100% 준수 · <1ms 지연)
     canonical_type = ambience_service.classify_business_type(business_info.business_type)
     hours_summary = ", ".join(places.business_hours[:3]) if places.business_hours else ""
 
-    review_scores = await llm_service.score_reviews(
-        review_corpus,
-        business_type=canonical_type,
-        trade_area=trade_area.label,
-        weather_summary=weather.summary,
-        business_hours=hours_summary,
-    )
-    _mark("llm")
+    google_scores = []
+    if has_google_reviews:
+        llm_call = llm_service.score_reviews(
+            places.reviews,
+            business_type=canonical_type,
+            trade_area=trade_area.label,
+            weather_summary=weather.summary,
+            business_hours=hours_summary,
+        )
+        if display_only_blogs:
+            google_scores, (web_evidence, _) = await asyncio.gather(llm_call, _blog_search(False))
+        else:
+            google_scores = await llm_call
+        _mark("llm")
+
+    blog_scores = []
+    if web_evidence and not has_google_reviews:
+        blog_scores = blog_scoring_service.score_blog_items(web_evidence)
+    blog_evidence_role = None
+    if web_evidence:
+        blog_evidence_role = "display_only" if has_google_reviews else "scored"
+
+    review_scores = list(google_scores) + list(blog_scores)
     text_scores = llm_service.aggregate_text_scores(review_scores)
 
     # -------- Step 8: TPO + ambience
@@ -504,12 +538,17 @@ async def analyse(
         provenance_notes.append(
             "Google Places가 동일 업체로 판단되지 않아 Google의 업종·영업시간·리뷰는 제외했습니다."
         )
+    has_blogs = any(it.source in {"naver_blog", "kakao_blog"} for it in web_evidence)
+    ev_label = "블로그 리뷰" if has_blogs else "웹 검색"
+
     if text_source == "web_search":
-        provenance_notes.append("리뷰가 충분하지 않아 웹 검색 텍스트를 분석 근거로 사용했습니다.")
-    elif text_source == "mixed":
-        provenance_notes.append("Google 리뷰와 웹 검색 텍스트를 함께 분석 근거로 사용했습니다.")
+        provenance_notes.append(f"리뷰가 충분하지 않아 {ev_label} 텍스트를 분석 근거로 사용했습니다.")
     elif text_source == "google_reviews":
         provenance_notes.append("Google 리뷰를 분석 근거로 사용했습니다.")
+        if web_evidence:
+            provenance_notes.append(
+                f"{ev_label} {len(web_evidence)}건은 참고용으로 함께 표시하며, 분석에는 반영하지 않았습니다."
+            )
     elif text_source == "none":
         provenance_notes.append(
             "사용 가능한 리뷰·웹 텍스트 근거가 없어 상권/업종 prior 위주로 추정했습니다."
@@ -522,14 +561,17 @@ async def analyse(
         provenance_notes.append(skip_text)
     if hours_source == "web":
         provenance_notes.append(
-            f"Google이 영업시간을 제공하지 않아 웹 검색으로 {len(recovered_hours)}건을 보강했습니다."
+            # Directory-style pages may supply hours but never count as blog reviews.
+            f"Google이 영업시간을 제공하지 않아 "
+            f"{'블로그 리뷰로' if web_search_diagnostics.get('hours_origin') == 'accepted_reviews' else '웹 검색으로'} "
+            f"{len(recovered_hours)}건을 보강했습니다."
         )
     if pick_reason == "unlisted_address_fallback":
         provenance_notes.append(
             "카카오맵 장소 미등록 사업장(오피스·신규 매장)으로, 등록된 주소 기반 상권 및 오피스 환경 분석을 적용했습니다."
         )
 
-    # '분석 근거' 템플릿 슬롯 1-2: 리뷰 코퍼스에서 LLM이 뽑은 키워드의 언급 빈도.
+    # '분석 근거' 템플릿 슬롯 1-2: 리뷰 코퍼스에서 추출한 키워드의 언급 빈도.
     # 키워드는 리뷰당 최대 5개로 중복 제거되어 있으므로 count ≈ 언급 리뷰 수.
     keyword_counter = Counter(
         kw.strip()
@@ -565,12 +607,7 @@ async def analyse(
         if text_source == "web_search":
             ambience.explanations.insert(
                 1 if not validation.is_consistent else 0,
-                f"📚 분석 근거: 웹 검색 결과 {len(web_evidence)}건 (상호·업종·주소 키워드 사용)."
-            )
-        elif text_source == "mixed":
-            ambience.explanations.insert(
-                0,
-                f"📚 분석 근거: Google 리뷰 {len(places.reviews)}건 + 웹 검색 {len(web_evidence)}건."
+                f"📚 분석 근거: {ev_label} {len(web_evidence)}건 (키워드·분위기 기반)."
             )
         elif text_source == "none":
             ambience.explanations.insert(
@@ -627,6 +664,8 @@ async def analyse(
             "timings_ms": {**_timings, "total": int((time.perf_counter() - started) * 1000)},
             "google_review_count_raw": len(places_candidate.reviews or []),
             "web_evidence_count": len(web_evidence),
+            "blog_evidence_role": blog_evidence_role,
+            "blog_search": web_search_diagnostics,
             "text_source": text_source,
             "entity_validation_score": validation.score,
             "entity_validation_consistent": validation.is_consistent,
