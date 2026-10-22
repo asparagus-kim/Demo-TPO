@@ -227,9 +227,9 @@ def test_user_picked_store_skips_registered_name_conflict(monkeypatch, setup):
 
 
 def test_at_most_four_blogs_are_kept_and_exact_title_matches_rank_first(monkeypatch, setup):
-    # Diary posts: no brand in the title, but they carry the store's place card.
-    diary = "오늘 일기. 별빛커피 서울 강남구 역삼동 1 다녀왔어요. 커피가 맛있고 좌석이 편안했어요."
-    broad = [post(f"https://blog.naver.com/writer{i}/{1000 + i}").model_copy(update={"title": "강남 카페 일기", "text": diary})
+    # Broader matches: the store is named in the title, but only the 동 is given.
+    broader = "역삼동 별빛커피에 다녀왔어요. 커피가 맛있고 좌석이 편안했어요."
+    broad = [post(f"https://blog.naver.com/writer{i}/{1000 + i}").model_copy(update={"title": "별빛커피 일기", "text": broader})
              for i in range(5)]
     exact = post("https://blog.naver.com/exact/999")
     async def kakao(*args, **kwargs): return broad + [exact]

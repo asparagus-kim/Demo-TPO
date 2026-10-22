@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, parse_qsl, unquote, urlsplit
 
 from ..schemas import WebEvidenceItem
 
-POLICY_VERSION = "storefront-blog-v3"
+POLICY_VERSION = "storefront-blog-v4"
 _CORPORATE = re.compile(r"주식회사|유한회사|\(\s*주\s*\)|㈜", re.I)
 _GENERIC = {"커피", "카페", "식당", "음식점", "레스토랑", "coffee", "cafe", "restaurant", "매장", "가게"}
 _CITIES = {
@@ -248,15 +248,6 @@ def _brand_match(text: str, brand: str) -> bool:
                           + r"(?=$|[^가-힣a-z0-9]|에서|에\s|을\s|를\s|은\s|는\s|의\s|이\s|가\s)", text, re.I))
 
 
-def _has_place_card(text: str, context: SearchContext) -> bool:
-    roads = [loc for loc in context.locality_tokens if _ROAD.fullmatch(loc)]
-    anchors = roads or [loc for loc in context.locality_tokens if _administrative_level(loc) == "neighborhood"]
-    if not anchors:
-        return False
-    return bool(re.search(_brand_pattern(context.brand) + r".{0,40}?(?:"
-                          + "|".join(re.escape(a) for a in anchors) + ")", text, re.I))
-
-
 def _store_reason(title: str, text: str, context: SearchContext) -> str:
     combined = f"{title} {text}"
     if not _brand_match(combined, context.brand):
@@ -265,10 +256,10 @@ def _store_reason(title: str, text: str, context: SearchContext) -> str:
     # "스타벅스 근처 네일샵": the store is only a landmark for another business.
     if re.search(brand + r"\s*(?:옆|앞|건너편|맞은편|근처|있는\s*건물|건물)", title, re.I):
         return "landmark_mention"
-    # The post must be about this store: named in the title, or carrying its Naver
-    # place card (store name followed by its own address), as visit diaries do.
-    # A body-only mention ("빽다방 있는 건물 3층") describes some other business.
-    if not _brand_match(title, context.brand) and not _has_place_card(text, context):
+    # The post must be about this store, so its title must name it. A body-only
+    # mention is a landmark ("빽다방 있는 건물 3층") or a diary stop ("지니의 결혼을
+    # 축하해" with the cafe's place card) — the right cafe, but not a review of it.
+    if not _brand_match(title, context.brand):
         return "brand_not_in_title"
     # An explicit other branch attached to the full brand outweighs an incidental
     # mention of the target neighborhood elsewhere in the snippet.

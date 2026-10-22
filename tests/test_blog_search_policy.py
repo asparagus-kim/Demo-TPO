@@ -310,7 +310,12 @@ def test_store_used_only_as_a_landmark_is_not_a_review():
     assert diagnostics["rejected"] == {"brand_not_in_title": 1, "landmark_mention": 1}
 
 
-def test_diary_with_the_store_place_card_is_accepted_without_title_brand():
-    ctx = build_search_context("생마차 구의역점", "서울 광진구 아차산로51길 42", "서울 광진구 구의동 257-69")
-    diary = item(title="11월 미룬일기", text="생일 술 사쥼 생마차 구의역 점 서울특별시 광진구 아차산로51길 42 오꼬노미야끼 맛있었어요 구의동 좋아")
-    assert len(filter_evidence([diary], ctx)[0]) == 1
+def test_post_about_something_else_is_rejected_even_with_the_store_place_card():
+    # Production report (579-13-01937): a friend's wedding post that stopped by the cafe.
+    ctx = build_search_context("카페지니", "서울 광진구 면목로 18", "서울 광진구 군자동 49-11")
+    wedding = item(title="<특별판> 나의 깜찍한 지니 의 결혼을 축하해 ♡",
+                   text="카페 지니 군자 서울특별시 광진구 면목로 18 1층( 군자동 ) @ 카페 지니 자리 없어서 지나가다 본 카페로 갔다. 커피가 맛있었다.")
+    review = item(title="카페 지니 군자 카공하기 좋은 카페", text="오늘 다녀온 카페는 카페 지니 군자 면목로 18 1층( 군자동 ). 조용해서 오래 앉아 있었어요.")
+    accepted, diagnostics = filter_evidence([wedding, review], ctx)
+    assert [a.title for a in accepted] == [review.title]
+    assert diagnostics["rejected"] == {"brand_not_in_title": 1}
