@@ -11,24 +11,13 @@ APIs, scores its "ambience", and plays 10 matching tracks.
 
 ---
 
-## 👉 개발자는 여기부터 / Developers start here
+## 문서 / Documents
 
-### **[`HANDOVER.md`](HANDOVER.md)**
+인수인계·기획 문서(`HANDOVER.md`, 작업 로그, 설계 메모)는 실행에 필요 없어 저장소 밖으로 옮겼습니다.
+필요하면 프로젝트 담당자에게 요청하십시오.
 
-코드를 보기 전에 읽으십시오. **Part 0**은 소스 한 줄 없이 읽히고, 왜 이 구조인지를
-설명합니다. 이 README에 없는 내용은 전부 거기 있습니다.
-
-> Read it before opening the code. **Part 0** explains the constraints behind the
-> design and needs no source file. Everything not in this README is in there.
-
-한국어로 읽으시려면 [`HANDOVER_ko.md`](HANDOVER_ko.md) — 같은 내용의 한국어판입니다(두 판본이 어긋나면 영문판이 정본).
-
-| | |
-|---|---|
-| **Part 0** | 목표와 제약, 방향이 바뀐 7개 지점, 어디에 투자할지 |
-| **Part I** | 파이프라인 · 모듈 지도 · 로컬 실행 · 밟은 함정 20건 · **비밀값 취급** · 테스트 |
-| **Part II** | API별 한계와 우회책, 유료 전환 시 삭제 가능한 코드 |
-| **Part III** | 한국 도메인 사전 (사업자번호 구조, 법정동/행정동, data.go.kr …) |
+> Handover and planning documents are not needed to run the app and are kept outside
+> this repository. Ask the project owner if you need them.
 
 ---
 
@@ -58,10 +47,7 @@ python -m uvicorn app.main:app --port 8077 --reload
 | `GOOGLE_MAPS_API_KEY` | GCP — Places API (New), 리뷰·영업시간 전용 |
 
 data.go.kr은 **Decoding 키**를 쓰십시오. Encoding 키를 넣으면 401/403이 납니다
-(`app/config.py`가 감지해 자동 보정하고 경고를 남깁니다). 이유는 `HANDOVER.md` Part III §4.2.
-
-발급 절차는 [`TPO_교체설계_사업자조회_KakaoLocal.md`](TPO_교체설계_사업자조회_KakaoLocal.md) §7에
-화면 단위로 있습니다.
+(`app/config.py`가 감지해 자동 보정하고 경고를 남깁니다).
 
 ---
 
@@ -91,23 +77,6 @@ python scripts/trade_area_validate.py report    # 상권 정확도 (API 호출 0
 | **UI** | **임의로 작성한 값 — 전체 디자인 변경 예정. 확정 사양이 아닙니다.** |
 | 배포 | 미배포 |
 | CI | 없음. git 커밋도 0개 |
-
----
-
-## 문서 지도 / Documents
-
-| 파일 | 성격 | 읽는 시점 |
-|---|---|---|
-| **[`HANDOVER.md`](HANDOVER.md)** | **인수인계 정본** (영문) | **처음이자 대부분** |
-| [`HANDOVER_ko.md`](HANDOVER_ko.md) | 위 문서의 한국어판 — 기획·경영진 검토용 | 한국어로 내용을 파악할 때 |
-| [`TPO_시연페이지_구현계획.md`](TPO_시연페이지_구현계획.md) | 작업 로그 — 구현 순서·실측 기록·날짜별 결정 | 특정 결정의 원래 근거를 파고들 때 |
-| [`TPO_교체설계_사업자조회_KakaoLocal.md`](TPO_교체설계_사업자조회_KakaoLocal.md) | 설계 문서 — bizno·Kakao 교체 상세, **키 발급 절차** | 키를 발급할 때 |
-| [`TPO_데모_설명서.md`](TPO_데모_설명서.md) | 이전 개발자 작성 원본 설명서 | 강화학습 PPO 실험을 볼 때 |
-| [`TPO_데모_구동법.md`](TPO_데모_구동법.md) | 구동 절차 (요약본은 위 "빠른 실행") | — |
-| [`HANDOVER_PLAN.md`](HANDOVER_PLAN.md) | 인수인계 문서 작성 계획·진행 상황 | 문서 작업을 이어받을 때 |
-
-**충돌하면 `HANDOVER.md`가 정본입니다.** 나머지는 작성 시점의 기록이라 낡은 수치가
-남아 있을 수 있습니다.
 
 ---
 

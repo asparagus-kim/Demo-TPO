@@ -13,11 +13,11 @@ matching tracks from a 620-track manifest (`data/demo_tracks.json`, audio on R2)
 
 | Part | Path | Status |
 |---|---|---|
-| **API backend (canonical)** | `app/` — FastAPI, port 8077 | Working. 187 offline tests pass. `HANDOVER.md` is the authoritative doc |
+| **API backend (canonical)** | `app/` — FastAPI, port 8077 | Working; offline tests in `tests/`. Handover docs (`HANDOVER.md` etc.) were archived to `../yielda_tpo_demo_archive/` on 2026-11-06 |
 | **Legacy demo UI** | `templates/demo.html` (vanilla JS, served at `/`) | Working; being replaced by `frontend/` |
 | **New frontend (active work)** | `frontend/` — Vite + React 19 + TS + Tailwind v4 + shadcn | Scaffolded; pages to be built following the design system below |
-| Node port | `backend/` | Low-fidelity stub — do NOT extend without explicit request |
-| Design reference | `public/Spotify Web Onboarding 0–13.png` | 14 screens — source of truth for layout & UI blocks |
+| Node port | archived (`../yielda_tpo_demo_archive/backend/`) | Unused low-fidelity stub |
+| Design reference | `../yielda_tpo_demo_archive/public/Spotify Web Onboarding 0–13.png` | 14 screens — source of truth for layout & UI blocks (outside the repo) |
 
 Run backend: `python -m uvicorn app.main:app --port 8077 --reload`
 Run frontend: `cd frontend && npm run dev` · check: `npm run typecheck && npm run lint`
@@ -28,7 +28,7 @@ Key API: `POST /api/analyse {business_number, company_name?, address_hint?, plac
 
 ---
 
-## 2. Design system (learned from `public/` reference screens)
+## 2. Design system (learned from the archived `public/` reference screens)
 
 We reproduce the **exact UI blocks, layouts, and interaction patterns** of the reference
 (Spotify web onboarding), but with **our own color tokens** (to be supplied — see §2.2).
