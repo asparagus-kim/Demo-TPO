@@ -1,89 +1,220 @@
-# yielda_tpo_demo
+# Yielda TPO Demo
 
-사업자등록번호 10자리만 입력하면 그 매장에 맞는 음악을 골라 재생하는 시연용 데모.
-소상공인 통합지원 파일럿(엠금융 협업)의 승인 자료 겸 D2D 세일즈 키트입니다.
+Type a 10-digit Korean business registration number (사업자등록번호); the app identifies
+the store from public data, scores its "ambience", and plays 10 matching tracks.
 
-Type a 10-digit Korean business registration number; the app works out the store's
-industry, address, trade area, opening hours and current weather from free/public
-APIs, scores its "ambience", and plays 10 matching tracks.
-
-**미배포 상태입니다** — 배포는 대표자 결정 대기 중. / Not deployed yet.
-
----
-
-## 문서 / Documents
-
-인수인계·기획 문서(`HANDOVER.md`, 작업 로그, 설계 메모)는 실행에 필요 없어 저장소 밖으로 옮겼습니다.
-필요하면 프로젝트 담당자에게 요청하십시오.
-
-> Handover and planning documents are not needed to run the app and are kept outside
-> this repository. Ask the project owner if you need them.
-
----
-
-## 빠른 실행 / Quick start
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env          # 키를 채워 넣습니다 / fill in your keys
-python -m uvicorn app.main:app --port 8077 --reload
-```
-
-`http://localhost:8077` 을 엽니다. 화면의 예시 버튼 두 개(카페 · 헬스장)는 후보 선택
-없이 한 번에 확정되는 매장이라 시연 중 흐름이 끊기지 않습니다.
-
-**`--reload` 를 빼지 마십시오.** 코드 수정이 반영되지 않아 낡은 동작을 디버깅하게 됩니다.
-키가 없으면 자동으로 mock 모드로 떨어집니다.
-
-### 필요한 키 (전부 무료 티어)
-
-| 변수 | 발급처 |
-|---|---|
-| `DATA_GO_KR_API_KEY` | data.go.kr — 국세청 사업자등록 상태조회 |
-| `KMA_API_KEY` | data.go.kr — 기상청 초단기실황 (같은 키 사용 가능) |
-| `KAKAO_REST_API_KEY` | developers.kakao.com — **카카오맵 사용설정 ON 필수** |
-| `BIZNO_API_KEY` | bizno.net — 사업자번호 → 상호명 |
-| `OPENAI_API_KEY` + `OPENAI_BASE_URL` | console.groq.com (OpenAI 호환) |
-| `GOOGLE_MAPS_API_KEY` | GCP — Places API (New), 리뷰·영업시간 전용 |
-
-data.go.kr은 **Decoding 키**를 쓰십시오. Encoding 키를 넣으면 401/403이 납니다
-(`app/config.py`가 감지해 자동 보정하고 경고를 남깁니다).
-
----
-
-## 검증 / Verify
-
-```bash
-python scripts/check_keys.py                    # 키 7종 점검
-python -m pytest -q                             # 오프라인 테스트 187개
-python scripts/smoke_all.py                     # 실제 API 대상 E2E 17개
-python scripts/trade_area_validate.py report    # 상권 정확도 (API 호출 0)
-```
-
-2026-08-06 기준 기대값: `check_keys` OK 9 / WARN 2 / FAIL 1(NPS — 미사용),
-`pytest` 187 통과, `smoke_all` 17/17 통과, 상권 27/30 (90%).
-
----
-
-## 지금 상태 / Current state
+Built as the approval artefact for the 소상공인 통합지원 pilot (엠금융 협업) and as a D2D
+sales kit.
 
 | | |
 |---|---|
-| 동작 | 5개 업종 실측 검증 (카페 2 · 헬스 2 · 미용실) |
-| 음원 | 620곡 · 11업종군 · R2 재생 620/620 |
-| 상권 판정 | 30곳 벤치마크 90% (기존 엑셀 방식 37%) |
-| 지연 | 2~10초 (콜드) · 캐시 히트 시 즉시 |
-| 반응형 | 375 / 768 / 1440px |
-| **UI** | **임의로 작성한 값 — 전체 디자인 변경 예정. 확정 사양이 아닙니다.** |
-| 배포 | 미배포 |
-| CI | 없음. git 커밋도 0개 |
+| **Backend** | FastAPI · https://yielda-tpo-api.onrender.com · `/health` returns the version |
+| **Frontend** | Vite + React 19 · https://yielda-tpo-demo.vercel.app |
+| **Status** | Live. Demo-grade: no auth, no database, in-memory caches only |
 
 ---
 
-## 환경 주의 / Environment note
+## 1. How it works
 
-이 개발 PC는 Windows Smart App Control이 켜져 있어 pandas 최신 버전의 DLL 로드가
-차단됩니다. `pandas==2.2.3`을 사용하십시오. 다른 환경에서는 해당 없습니다.
+One request (`POST /api/analyse`) runs the whole pipeline:
 
-> Windows Smart App Control on the original dev machine blocks newer pandas DLLs.
-> Pin `pandas==2.2.3` there; irrelevant elsewhere.
+```
+사업자등록번호 (10 digits)
+   │
+   ├─ 국세청 NTS ............ business status (계속/휴업/폐업)
+   ├─ APICK ................. name + address + lat/lng          ← primary
+   │    └─ bizno ............ name only                          ← fallback
+   ├─ Kakao Local ........... resolve the actual store
+   │    └─ by coordinates when APICK supplied them, else by name similarity
+   ├─ Trade area ............ classify the 상권 from surrounding businesses
+   ├─ Google Places ......... reviews + opening hours (daily-capped, degrades)
+   ├─ Blog search ........... Naver/Kakao blog posts (display only)
+   ├─ KMA ................... current weather
+   ├─ LLM (Groq) ............ score review text
+   └─ Ambience fusion ....... Energy / Tempo / Mood  →  10 tracks from 620
+```
+
+**Why APICK sits above bizno.** bizno's free plan returns a *name only*, and names are not
+unique in Korea — two stores sharing one name both score `1.000` on name similarity, so the
+gap is `0.000` and the store can never be auto-selected. The user then sees a 매장 선택
+picker. APICK returns coordinates, which settle it. Measured on 49 real 광진구 stores:
+**41% hit the picker without APICK, ~10% with it.**
+
+`needs_input` in the response is a **flow state, not an error** (`success: false` plus a
+payload). It means "ask the user to pick a store or type a name", and the UI is expected to
+render it.
+
+---
+
+## 2. Repository layout
+
+```
+app/                FastAPI backend — the canonical implementation
+  routers/          analyse · health · insurance
+  services/         one module per upstream (apick, bizno, kakao, places, llm, …)
+  utils/            http pool · TTL caches · log redaction
+frontend/           Vite + React 19 + TS + Tailwind v4 + shadcn
+  src/components/   care/ · stream/ · yielda/ · ui/
+  src/lib/          api types, analysis store, flow state machines
+  public/           fonts + images served as-is
+data/               620-track manifest + 상권 reference xlsx
+templates/          legacy vanilla-JS demo, served at /
+tests/              262 test functions, fully offline
+scripts/            key checks, smoke tests, data curation
+```
+
+`CLAUDE.md` is the working brief: design tokens, UI block inventory, and backend
+guardrails. Read it before changing UI.
+
+---
+
+## 3. Running locally
+
+### Backend
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # fill in the keys below
+python -m uvicorn app.main:app --port 8077 --reload
+```
+
+Open `http://localhost:8077` for the legacy demo UI.
+
+Keep `--reload`. Without it you will debug stale code after every edit.
+**With no keys the app silently falls back to mock mode** and serves fixture data for the
+store `별빛카페 달빛차` — if you see that store, a key is missing.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173, proxies /api → :8077
+npm run typecheck && npm run lint
+```
+
+To run the frontend against **production** instead of a local backend (useful when you
+don't want to set up Python):
+
+```bash
+VITE_API_BASE_URL=https://yielda-tpo-api.onrender.com npm run dev
+```
+
+Routes: `/` analysis flow · `/stream` player · `/collection` internal dashboard.
+The Care screen (챙김) is an **overlay inside `/stream`**, not a route — see §6.
+
+---
+
+## 4. Environment variables
+
+Required — the pipeline degrades or mocks without these:
+
+| Variable | Where to get it | Notes |
+|---|---|---|
+| `KAKAO_REST_API_KEY` | developers.kakao.com | **카카오맵 사용설정 must be ON** |
+| `OPENAI_API_KEY` + `OPENAI_BASE_URL` | console.groq.com | OpenAI-compatible; base URL is required |
+| `DATA_GO_KR_API_KEY` | data.go.kr | 국세청 business status |
+| `KMA_API_KEY` | data.go.kr | 기상청; the same key works |
+| `APICK_API_KEY` | apick.app | Paid, 50 points/call. Name + address + coordinates |
+| `BIZNO_API_KEY` | bizno.net | Free, **200 lookups/day per key**. Fallback |
+| `GOOGLE_MAPS_API_KEY` | GCP — Places API (New) | Reviews + hours only; degrades cleanly |
+
+Optional: `SHEETS_WEBHOOK_URL` / `SHEETS_WEBHOOK_TOKEN` (analysis logging to a Google
+Sheet), `MOCK_MODE`, `LLM_REVIEW_CAP`, `WEB_FALLBACK_BUDGET_SEC`, `LOG_LEVEL`.
+
+> **data.go.kr keys:** use the **Decoding** key. The Encoding key double-escapes and
+> returns 401/403. `app/config.py` detects this and corrects it with a warning.
+
+Frontend build-time vars (set in Vercel, baked at build):
+`VITE_API_BASE_URL`, `VITE_KAKAO_JS_KEY`.
+
+---
+
+## 5. Deployment — two independent pipelines
+
+**This is the most common mistake.** The backend and frontend ship separately.
+
+| | Backend | Frontend |
+|---|---|---|
+| Trigger | `git push origin main` → Render auto-deploys | `cd frontend && vercel deploy --prod` |
+| Source | this git repo | direct upload from your machine |
+| Verify | `/health` reports `version` — bump `app/__init__.py` so you can confirm | load the page |
+
+**Pushing to `main` does not ship any frontend change.** If someone reports a UI fix that
+"didn't deploy", this is almost always why.
+
+Six secrets in `render.yaml` are `sync: false` — they live only in the Render Dashboard and
+**no code push can carry them**. Setting one requires editing it there, which triggers a
+redeploy.
+
+Render's free plan spins down after ~15 minutes idle; the first request then pays a **~33s
+cold start**. Before a demo, hit `/health` a minute ahead to wake it.
+
+---
+
+## 6. Testing
+
+```bash
+python -m pytest -q tests/        # 262 tests, fully offline — no network, no keys needed
+python scripts/check_keys.py      # verifies every upstream key
+python scripts/smoke_all.py       # end-to-end against the real APIs (costs quota)
+```
+
+`tests/` must stay offline. Several upstreams are paid or rate-limited, so a test that hits
+the network will burn quota in CI.
+
+Frontend: `npm run typecheck` is clean and should stay that way. `npm run lint` currently
+reports **17 pre-existing errors in vendored shadcn files** (`components/ui/*`,
+`components/tool-ui/*`, `hooks/use-mobile.ts`). `npm run build` does not run lint, so these
+do not block a deploy — but the lint gate is effectively red, which will mask a real error.
+
+---
+
+## 7. Things that will bite you
+
+**APICK reports failure as HTTP 200.** An expired key returns `401`, but *out of points*
+returns `200` with `{"result":{"error":"사용 가능한 포인트이 부족합니다."}}`. Either way the
+chain degrades silently to bizno and the 매장 선택 picker starts reappearing days later.
+`apick_service.payload_error()` extracts the reason and logs it at ERROR. Error responses
+are deliberately **never cached**, so topping up points takes effect immediately.
+Diagnose with `debug.identity_source` — it should read `apick`, not `bizno`.
+
+**bizno is 200 lookups/day per key.** When drained it returns `resultCode: -3`, and *every*
+business number falls to "상호명을 입력해 주세요". Check `debug.biz_lookup_error`:
+`quota_exceeded` means the service, `not_found` means the number.
+
+**Kakao uses `x` = longitude, `y` = latitude.** Never swap them.
+`kakao_local_service._to_location` is the single conversion point.
+
+**Two files are stored with CRLF line endings** — `app/routers/analyse.py` and
+`app/schemas.py`. Any tool that rewrites the whole file with `\n` normalises every line and
+turns a 3-line edit into a ~1300-line diff. Compare `git diff --stat` against
+`git diff --stat --ignore-all-space`; if they disagree wildly, the endings were normalised.
+
+**Secrets are passed as query parameters** to data.go.kr and bizno. Never log a raw request
+URL or echo an exception string into a response — `app/utils/logging.py` redaction depends
+on this.
+
+**Groq's free tier is bound by output tokens/minute (1000), not TPM.** Review scoring is
+batched into one call for this reason; `LLM_REVIEW_CAP` is the batch size. Don't raise it
+past ~12 on the free tier.
+
+**DuckDuckGo blocks Render's egress IP.** The web-search fallback returns nothing from
+production and is capped by `WEB_FALLBACK_BUDGET_SEC` (4s). Raising the budget won't help;
+a real fix means a paid search API.
+
+**Caches are per-process and in-memory** (`app/utils/cache.py`), and Render runs a single
+worker deliberately. More workers would multiply paid API spend and fragment the cache.
+
+---
+
+## 8. Known gaps
+
+- No authentication, no database, no CI.
+- `entity_validation` can accept a Google Places match with `name_similarity = 0` when the
+  address matches strongly — it has surfaced the wrong business in testing.
+- The Care screen (챙김) is a **front-end-only mock**: no API calls, no storage, and its
+  state resets every time it opens. It is demo content, not a feature.
+- Three business numbers in the archived 광진구 49-store CSV point at entirely different
+  businesses — that list was assembled from public listings and is not verified.

@@ -1,0 +1,329 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/outfit";
+
+/* ── Paperlogy (한국어 주 서체) — frontend/public/Paperlogy-1.001/ ── */
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-1Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-2ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-3Light.ttf") format("truetype");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-4Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-5Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-6SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-7Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-8ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Paperlogy";
+  src: url("/Paperlogy-1.001/Paperlogy-9Black.ttf") format("truetype");
+  font-weight: 900;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "Paperlogy", "Outfit Variable", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-panel: var(--panel);
+  --color-accent-text: var(--accent-text);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-kakao: var(--kakao);
+  --color-kakao-foreground: var(--kakao-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ── Onboarding hero motion — consumed via motion-safe: variants only ── */
+@theme {
+  /* Matches the studio-gray backdrop of public/onboarding.png (sampled) */
+  --color-onboarding-canvas: #d4d4d3;
+  --animate-hero-float: hero-float 7s ease-in-out infinite alternate;
+  --animate-eq-bounce: eq-bounce 0.9s ease-in-out infinite alternate;
+
+  @keyframes hero-float {
+    from {
+      transform: translateY(0.5rem);
+    }
+    to {
+      transform: translateY(-0.5rem);
+    }
+  }
+  @keyframes eq-bounce {
+    from {
+      transform: scaleY(0.3);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+}
+
+/* ── AntiMetalButton dot-wave (src/components/ui/anti-metal-button.tsx) ── */
+@keyframes bd-dot-wave {
+  0%,
+  70%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.bd-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bd-dot-wave 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bd-dot {
+    animation: none;
+    opacity: 1;
+  }
+  /* ldrs Orbit animates on pseudo-elements — freeze the dots side by side */
+  .yielda-orbit *::before,
+  .yielda-orbit *::after {
+    animation: none;
+    opacity: 1;
+  }
+  .yielda-orbit *::before {
+    transform: translateX(calc(var(--uib-size) * 0.25));
+  }
+  .yielda-orbit *::after {
+    transform: translateX(calc(var(--uib-size) * -0.25));
+  }
+}
+
+/* ── 스크롤바 숨김 (스트림 셸 패널) ──
+   스크롤은 그대로 두고 네이티브 스크롤바만 감춘다. 브라우저가 스크롤바를
+   페이드시켜 주지 못해(Chrome 은 scrollbar-color·::-webkit-scrollbar-thumb 의
+   transition 을 무시한다) 상시 노출되는 표시 자체를 없애는 쪽을 택했다. */
+@utility scrollbar-hidden {
+  /* 표준 (Chrome 121+, Firefox, Safari 18.2+) */
+  scrollbar-width: none;
+  /* 구형 WebKit — 위 속성을 모르는 브라우저에서만 적용된다 */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+:root {
+  /* Kakao 브랜드 버튼 (카카오맵 딥링크 전용) — 공식 컨테이너 #FEE500 / 라벨 #191919.
+     브랜드 색이라 테마와 무관하게 고정 — .dark 에서 재선언하지 않는다. */
+  --kakao: #fee500;
+  --kakao-foreground: #191919;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --panel: oklch(0.975 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  /* 로얄 블루 계열 — #305AF6, 밝은 배경에선 흰색 라벨 */
+  --primary: oklch(0.542 0.237 266.3);
+  --primary-foreground: oklch(1 0 0);
+  /* deep end of the accent family */
+  --primary-deep: oklch(0.35 0.16 266);
+  /* 밝은 배경에서는 반대로 더 어두워야 읽힌다 (흰 배경 대비 6.5:1). */
+  --accent-text: oklch(0.47 0.2 266);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.542 0.237 266.3 / 45%);
+  /* 차트 계열색 — 고정 순서로만 배정한다(절대 순환/재배정 금지: 색은 시리즈에
+     붙지 등수에 붙지 않는다). 색상각뿐 아니라 명도까지 벌려 둔 이유는 적록색약에서
+     amber↔emerald 가 붙기 때문. 흰 배경 기준 6개 검사 전부 PASS
+     (명도대역 · 채도하한 · 색약분리 ΔE 10.6 · 정상시야 22.9 · 대비 3:1↑). */
+  --chart-1: oklch(0.58 0.12 233);    /* sky    #0085B5 */
+  --chart-2: oklch(0.655 0.139 75);   /* amber  #C18200 */
+  --chart-3: oklch(0.5 0.124 155);    /* green  #007742 */
+  --chart-4: oklch(0.55 0.17 300);    /* violet #8254C4 */
+  --chart-5: oklch(0.62 0.16 350);    /* pink   #CA5794 */
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Yielda 다크 셸(스트림·결과) — 로얄 블루 계열 (OKLCH 색상각 ~266).
+   page #090d0f · surface #0e1316 · raised #141a1e · accent #305AF6
+   중성색에도 아주 옅은 블루 캐스트(chroma 0.008~0.014)를 넣어 한 가족으로 묶는다. */
+.dark {
+  --background: oklch(0.155 0.008 234);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.215 0.012 234);
+  --card-foreground: oklch(0.985 0 0);
+  /* panel: streaming-shell surface — between page bg and elevated card */
+  --panel: oklch(0.185 0.01 234);
+  --popover: oklch(0.215 0.012 234);
+  --popover-foreground: oklch(0.985 0 0);
+  /* 로얄 블루 액센트 #305AF6 — 채움 위 흰 라벨, near-black 페이지 위 글자 */
+  --primary: oklch(0.542 0.237 266.3);
+  --primary-foreground: oklch(0.985 0 0);
+  /* deep end of the accent family */
+  --primary-deep: oklch(0.35 0.16 266);
+  /* 강조 '글자'용 accent. --primary 를 글자로 쓰면 어두운 배경 대비
+     3.64:1 로 WCAG AA(4.5:1) 미달이다 — 이 값은 9.6:1.
+     채움(버튼 배경)은 --primary, 글자는 --accent-text 로 역할을 나눈다. */
+  --accent-text: oklch(0.78 0.12 266);
+  --secondary: oklch(0.269 0.014 234);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0.014 234);
+  --muted-foreground: oklch(0.75 0.012 234);
+  --accent: oklch(0.269 0.014 234);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.542 0.237 266.3 / 60%);
+  /* 다크 셸용 계열색 — 라이트와 같은 색상각을 어두운 표면(#0E1316)에 맞춰 다시
+     밟은 것이다(자동 반전이 아니다). 6개 검사 전부 PASS
+     (색약분리 ΔE 11.1 · 정상시야 23.6 · 대비 3:1↑). */
+  --chart-1: oklch(0.62 0.128 233);   /* sky    #0092C6 */
+  --chart-2: oklch(0.67 0.142 75);    /* amber  #C78600 */
+  --chart-3: oklch(0.51 0.127 155);   /* green  #007A44 */
+  --chart-4: oklch(0.58 0.16 300);    /* violet #8A5FC9 */
+  --chart-5: oklch(0.66 0.15 350);    /* pink   #D4679F */
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ── Onboarding v2 — 라이트 블루 스코프 (public/onboarding-3.png) ──
+   같은 semantic 토큰을 라이트 값으로 다시 선언해, 안에 들어가는 블록은
+   손대지 않고 팔레트만 바뀐다. 스트림/결과 화면은 다크 그대로다.
+   로얄 블루 CTA (#305AF6, 흰 라벨). */
+.theme-onboarding-v2 {
+  --background: oklch(0.972 0.016 266);
+  --foreground: oklch(0.245 0.035 266);
+  /* 패널 위에서 떠오르는 흰 카드 — 체크리스트·매장 후보 */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.245 0.035 266);
+  /* the form panel itself */
+  --panel: oklch(0.895 0.06 266);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.245 0.035 266);
+  /* CTA 채움 — 라이트 배경이라 로얄 블루 + 흰 라벨 */
+  --primary: oklch(0.542 0.237 266.3);
+  --primary-foreground: oklch(1 0 0);
+  /* deeper shade of the accent */
+  --primary-deep: oklch(0.85 0.085 266);
+  /* 밝은 배경에서는 반대로 더 어두워야 읽힌다 (흰 배경 대비 6.5:1). */
+  --accent-text: oklch(0.47 0.2 266);
+  --secondary: oklch(0.945 0.031 266);
+  --secondary-foreground: oklch(0.245 0.035 266);
+  --muted: oklch(0.955 0.024 266);
+  /* 5.7:1 on the panel, 7.7:1 on the white card */
+  --muted-foreground: oklch(0.44 0.048 266);
+  --accent: oklch(0.945 0.031 266);
+  --accent-foreground: oklch(0.245 0.035 266);
+  --destructive: oklch(0.52 0.2 22);
+  --border: oklch(0.245 0.035 266 / 14%);
+  --input: oklch(0.245 0.035 266 / 22%);
+  --ring: oklch(0.542 0.237 266.3 / 45%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

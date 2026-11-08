@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="ko" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Yielda — 사업장 보험 상담 신청 완료</title>
+<style>
+/* ═══ 토큰 · 폰트 — 분석 결과 화면(index-BZDhfPQ7.css)과 동일 ═══ */
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-4Regular.ttf)format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-5Medium.ttf)format("truetype");font-weight:500;font-display:swap}
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-6SemiBold.ttf)format("truetype");font-weight:600;font-display:swap}
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-7Bold.ttf)format("truetype");font-weight:700;font-display:swap}
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-8ExtraBold.ttf)format("truetype");font-weight:800;font-display:swap}
+@font-face{font-family:Paperlogy;src:url(/Paperlogy-1.001/Paperlogy-9Black.ttf)format("truetype");font-weight:900;font-display:swap}
+:root{
+  --background:oklch(15.5% .008 234);
+  --foreground:oklch(98.5% 0 0);
+  --card:oklch(21.5% .012 234);
+  --secondary:oklch(26.9% .014 234);
+  --secondary-40:oklch(26.9% .014 234 / .4);
+  --muted-foreground:oklch(75% .012 234);
+  --primary:oklch(54.2% .237 266.3);
+  --primary-15:oklch(54.2% .237 266.3 / .15);
+  --primary-foreground:oklch(98.5% 0 0);
+  --border:oklch(100% 0 0 / .1);
+  --ring:oklch(98.5% 0 0 / .1);
+  --kakao:#fee500; --kakao-fg:#191919;
+  --r-lg:10px; --r-xl:14px; --r-4xl:2rem;
+  --shadow-md:0 4px 6px -1px rgb(0 0 0/.1),0 2px 4px -2px rgb(0 0 0/.1);
+  --font:"Paperlogy","Outfit Variable",system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;border:0 solid var(--border)}
+html{color-scheme:dark}
+body{background:var(--background);color:var(--foreground);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;word-break:keep-all}
+button,a{font:inherit;color:inherit;background:none;cursor:pointer;text-decoration:none}
+svg{flex-shrink:0}
+
+/* 페이지 프레임: min-h-svh px-4 pb-16 > max-w-[96rem] */
+.page{min-height:100svh;width:100%;padding:0 16px 64px}
+.container{margin:0 auto;width:100%;max-width:96rem}
+.logo-row{display:flex;justify-content:center;padding:32px 0 8px}
+.logo{font-weight:800;letter-spacing:.06em;font-size:30px;line-height:36px;color:#fff}
+.stack{padding-top:16px;display:flex;flex-direction:column;gap:16px}
+/* 미리보기 전용 필 — 배포 화면에는 나타나지 않음(로컬 파일 열기 또는 ?preview=1 에서만 표시) */
+.scen{display:none;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap}
+html.preview .scen{display:flex}
+.scen span{font-size:12px;color:var(--muted-foreground);margin-right:4px}
+.scen button{border-radius:9999px;padding:2px 12px;font-size:12px;font-weight:700;border:1px solid var(--border);color:var(--muted-foreground)}
+.scen button:hover{color:var(--foreground)}
+.scen button[aria-pressed=true]{background:var(--primary-15);color:var(--primary);border-color:transparent;filter:brightness(1.25)}
+
+/* 히어로: rounded-lg > bg-card px-4 pt-8 pb-6 sm:flex-row */
+.hero{overflow:hidden;border-radius:var(--r-lg)}
+.hero-in{display:flex;flex-direction:column;align-items:center;gap:16px;background:var(--card);padding:32px 16px 24px;text-align:center}
+.hero-l{display:flex;min-width:0;flex-direction:column;align-items:center;gap:8px}
+.status{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600}
+.pill{border-radius:9999px;padding:2px 12px;font-size:12px;font-weight:700;background:var(--primary-15);color:var(--primary);filter:brightness(1.25)}
+.pill.fg{background:var(--foreground);color:var(--background);filter:none}
+h1{font-size:36px;line-height:1.05;font-weight:900;letter-spacing:-.025em}
+.hero-sub{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 6px;font-size:14px;color:var(--muted-foreground)}
+.ico6{display:flex;align-items:center;justify-content:center;border-radius:9999px;background:var(--foreground);color:var(--background);width:24px;height:24px}
+.hero-r{display:flex;width:100%;flex-shrink:0;flex-direction:column;gap:8px}
+.btn{display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border-radius:9999px;font-weight:700;transition:all .15s;border:.67px solid transparent;width:100%}
+.btn:active{transform:translateY(1px)}
+.btn-outline{height:40px;padding:0 16px 0 12px;font-size:14px;border-color:var(--border);background:transparent}
+.btn-outline:hover{background:var(--secondary)}
+.btn-primary{height:48px;padding:0 32px;font-size:16px;background:var(--primary);color:var(--primary-foreground)}
+.btn-primary:hover{opacity:.8}
+.btn:disabled{opacity:.5;pointer-events:none}
+@media(min-width:640px){
+  .hero-in{flex-direction:row;align-items:flex-start;justify-content:space-between;padding-left:24px;padding-right:24px;text-align:left}
+  .hero-l{align-items:flex-start}.status,.hero-sub{justify-content:flex-start}.hero-r{margin-top:4px;width:auto}
+}
+@media(min-width:1024px){h1{font-size:60px}}
+
+/* 그리드 · 카드 */
+.grid{display:grid;gap:20px}
+@media(min-width:768px){.grid{grid-template-columns:1fr 1fr}}
+.col{display:flex;min-width:0;flex-direction:column;gap:16px}
+.card{display:flex;flex-direction:column;gap:24px;overflow:hidden;border-radius:var(--r-4xl);background:var(--card);padding:24px 0;font-size:14px;box-shadow:var(--shadow-md);box-shadow:var(--shadow-md),0 0 0 1px var(--ring)}
+.card-c{padding:0 24px;display:flex;flex-direction:column;gap:4px}
+.card-c.g4{gap:16px}
+.h-caps{font-size:14px;font-weight:700;letter-spacing:.1em;color:var(--muted-foreground);text-transform:uppercase}
+.h-xl{font-size:20px;line-height:28px;font-weight:700}
+.h-base{font-size:16px;font-weight:700}
+dl.rows{margin-top:8px}
+dl.rows>div{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--border);padding:12px 0;font-size:16px}
+dl.rows>div:last-child{border-bottom:0}
+dl.rows dt{width:80px;flex-shrink:0;font-size:14px;color:var(--muted-foreground)}
+dl.rows dd{min-width:0;flex:1;font-weight:600;overflow-wrap:anywhere}
+dl.rows dd small{margin-top:2px;display:block;font-size:14px;font-weight:400;color:var(--muted-foreground)}
+.note{margin-top:12px;border-radius:var(--r-xl);border:1px solid var(--border);background:var(--secondary-40);padding:16px}
+.note b{display:block;font-size:16px}
+.note p{margin-top:4px;font-size:16px;line-height:1.625;color:var(--muted-foreground)}
+.coll{margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
+.coll-t{display:flex;min-height:44px;width:100%;align-items:center;justify-content:space-between;gap:8px;border-radius:var(--r-lg);padding:0 8px;font-size:16px;font-weight:700;text-align:left;transition:all .15s}
+.coll-t:hover{background:var(--secondary);color:var(--primary);filter:brightness(1.3)}
+.chev{display:flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:9999px;background:var(--secondary);transition:transform .2s}
+.coll[data-state=open] .chev{transform:rotate(180deg)}
+.coll[data-state=closed] .coll-b{display:none}
+ol.reasons{list-style:decimal;padding-left:20px;padding-top:8px;display:flex;flex-direction:column;gap:8px;font-size:16px;color:var(--muted-foreground)}
+ol.reasons li{padding-left:2px;line-height:1.625}
+ol.reasons li::marker{font-size:14px;color:oklch(75% .012 234 / .7)}
+
+/* T/P/O 표 스타일 재사용 */
+.tpo{overflow:hidden;border-radius:var(--r-xl);border:1px solid var(--border)}
+.tpo>div{display:flex;border-bottom:1px solid var(--border)}
+.tpo>div:last-child{border-bottom:0}
+.tpo .k{display:flex;width:64px;flex-shrink:0;flex-direction:column;align-items:center;justify-content:center;background:var(--secondary);padding:12px 0}
+.tpo .k b{font-size:20px;line-height:1}
+.tpo .k span{font-size:10px;letter-spacing:.1em;color:var(--muted-foreground)}
+.tpo .v{display:flex;min-width:0;flex:1;align-items:center;padding:12px 16px;font-size:16px}
+.tpo .v small{display:block;font-size:14px;color:var(--muted-foreground)}
+
+/* 벡터 바 스타일 재사용 (만기 진행) */
+.vec{display:flex;flex-direction:column;gap:12px}
+.vrow{display:flex;align-items:center;gap:12px;font-size:16px}
+.vrow b{width:56px;flex-shrink:0;font-weight:600}
+.vrow .bar{height:6px;min-width:0;flex:1;overflow:hidden;border-radius:9999px;background:var(--secondary)}
+.vrow .bar i{display:block;height:100%;border-radius:9999px;background:var(--primary)}
+.vrow .tag{width:64px;flex-shrink:0;text-align:right;font-size:14px;color:var(--muted-foreground)}
+.vrow .num{width:44px;flex-shrink:0;border-radius:var(--r-lg);background:var(--foreground);padding:2px 0;text-align:center;font-size:14px;font-weight:700;color:var(--background)}
+ul.dots{display:flex;flex-direction:column;gap:6px;list-style:none}
+ul.dots li{display:flex;align-items:flex-start;gap:10px;font-size:16px}
+ul.dots li::before{content:"";margin-top:8px;width:6px;height:6px;flex-shrink:0;border-radius:9999px;background:var(--primary)}
+ul.dots li span{line-height:1.625}
+
+/* 인용구 스타일 재사용 (동의 내역) */
+.quotes{display:flex;flex-direction:column;gap:8px}
+blockquote{border-radius:0 var(--r-lg) var(--r-lg) 0;border-left:2px solid var(--primary);background:var(--secondary-40);padding:10px 12px}
+blockquote p{font-size:16px;line-height:1.625}
+blockquote cite{margin-top:4px;display:block;font-size:14px;color:var(--muted-foreground);font-style:normal}
+.small-muted{font-size:14px;color:var(--muted-foreground)}
+
+/* 하단 카드(지도 카드 자리) + 버튼 2 */
+.next{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
+.next-card{display:flex;min-height:0;flex:1;flex-direction:column;overflow:hidden;border-radius:var(--r-lg);background:var(--card);box-shadow:0 0 0 1px var(--border);padding:16px 20px;gap:10px}
+.next-card .t{font-size:14px;font-weight:700;letter-spacing:.1em;color:var(--muted-foreground);text-transform:uppercase}
+.next-card ol{list-style:none;display:flex;flex-direction:column;gap:8px}
+.next-card li{display:flex;gap:10px;align-items:flex-start;font-size:16px}
+.next-card li i{display:flex;width:24px;height:24px;flex-shrink:0;align-items:center;justify-content:center;border-radius:9999px;background:var(--secondary);font-style:normal;font-size:12px;font-weight:700}
+.btn-row{display:flex;gap:8px}
+.btn-sm{height:36px;flex:1;padding:0 12px;font-size:14px;width:auto}
+.btn-kakao{background:var(--kakao);color:var(--kakao-fg)}
+.btn-kakao:hover{opacity:.9}
+.btn-fg{background:var(--foreground);color:var(--background)}
+.btn-fg:hover{opacity:.9}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--foreground);color:var(--background);padding:10px 18px;border-radius:9999px;font-size:14px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="page"><div class="container">
+
+  <div class="logo-row"><button type="button" class="logo" onclick="location.href='/'" aria-label="온보딩 페이지로 돌아가기">Yielda</button></div>
+
+  <div class="stack">
+    <div class="scen" id="scen"><span>미리보기 · 배포 시 미노출</span><select id="pick" style="border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:700;border:1px solid var(--border);color:var(--foreground);background:var(--secondary)"></select></div>
+    <!-- 히어로 -->
+    <section class="hero"><section class="hero-in">
+      <div class="hero-l">
+        <span class="status">보험 상담 신청 완료 <span class="pill" id="pillState">접수됨</span><span class="pill" id="pillFree">1년 무료 적용</span><span class="pill fg" id="pillEst" hidden>추정</span></span>
+        <h1 id="storeName"></h1>
+        <p class="hero-sub"><span class="ico6"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span id="heroSub"></span></p>
+      </div>
+      <div class="hero-r">
+        <button type="button" class="btn btn-outline" id="withdraw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>상담 철회</button>
+        <button type="button" class="btn btn-primary" onclick="location.href='/stream'" aria-label="추천 플레이리스트 재생">추천 플레이리스트 재생</button>
+      </div>
+    </section></section>
+
+    <div class="grid">
+      <!-- 좌: 보험 판정 결과 -->
+      <div class="card"><div class="card-c">
+        <h3 class="h-caps">보험 판정 결과</h3>
+        <dl class="rows" id="judgeRows"></dl>
+        <div class="note"><b>판정 근거</b><p id="judgeWhy"></p></div>
+        <div class="coll" data-state="open" id="collRisk">
+          <button type="button" class="coll-t" data-coll><span id="riskTitle">의무보험 기준</span> <span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
+          <div class="coll-b"><ol class="reasons" id="riskList"></ol></div>
+        </div>
+        <div class="coll" data-state="closed">
+          <button type="button" class="coll-t" data-coll>확인한 공공 데이터 4건 <span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
+          <div class="coll-b"><ol class="reasons" id="dataList"></ol></div>
+        </div>
+      </div></div>
+
+      <!-- 우: 신청 내역 · 전달 정보 · 다음 단계 -->
+      <div class="col">
+        <div class="card"><div class="card-c g4">
+          <h3 class="h-xl">상담 신청 내역</h3>
+          <div class="tpo">
+            <div><div class="k"><b>S</b><span>SERVICE</span></div><div class="v" id="svcCell"></div></div>
+            <div><div class="k"><b>T</b><span>TIME</span></div><div class="v">오후 2시 – 5시 <small>연락 가능 시간대 · 문자 먼저 안내</small></div></div>
+            <div><div class="k"><b>C</b><span>CONTACT</span></div><div class="v" id="contactCell">홍길동 · 010-0000-0000 <small>본인인증 실명 · 명의 일치 확인</small></div></div>
+          </div>
+
+          <div class="vec" id="vecWrap">
+            <h4 class="h-base" id="vecTitle">진행 상태</h4>
+            <div id="vecRows"></div>
+            <ul class="dots" id="vecNotes"></ul>
+          </div>
+
+          <div class="quotes">
+            <h4 class="h-base">보험사에 전달된 정보</h4>
+            <blockquote><p id="payloadText"></p><cite id="payloadCite"></cite></blockquote>
+            <blockquote><p>“개인정보 제3자 제공 동의 — 제공받는 자 보험사 · 목적 보험 상담 및 안내 · 보유 기간 상담 종료 후 6개월. 동의는 신청 내역에서 언제든 철회할 수 있습니다.”</p><cite id="consentCite"></cite></blockquote>
+            <div class="small-muted">전달 항목 외의 정보(리뷰 원문 등)는 전달되지 않습니다. 대표자 이름·연락처는 가린 채로 표시합니다.</div>
+          </div>
+        </div></div>
+
+        <div class="next">
+          <div class="next-card">
+            <div class="t">다음 단계</div>
+            <ol>
+              <li><i>1</i><span>보험사 상담사 배정 — 1영업일 이내</span></li>
+              <li><i>2</i><span>연락 가능 시간대에 문자로 일정 안내</span></li>
+              <li><i>3</i><span id="nextStep3"></span></li>
+            </ol>
+          </div>
+          <div class="btn-row">
+            <a class="btn btn-sm btn-kakao" href="https://pf.kakao.com/" target="_blank" rel="noopener noreferrer"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7L5.8 21l4-2.6c.7.1 1.4.2 2.2.2 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오톡 채널 문의</a>
+            <a class="btn btn-sm btn-fg" href="/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>분석 결과로 돌아가기</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/insurance-estimate.js"></script>
+<script>
+/* ── 데이터 계약 ───────────────────────────────────────────────
+   REAL(쿼리스트링, insurance-link.ts): name · bno · addr · gu · cat · consistency
+   REAL(같은 오리진 정적 조회, /insurance-leads.json): 면적 · 다중이용업소 · 영업상태 ·
+        국세청 사업자상태 · 재난배상책임보험 가입정보 · 판정(rules.json v2)
+   더미는 없다. 사업자번호가 조회표에 없으면 A0(판정 보류)로 떨어진다 — 절대 추측하지 않는다.
+   엔진이 배포되면 LEADS_URL 한 줄만 API 로 바꾸면 된다. */
+const LEADS_URL='/insurance-leads.json';
+
+if(location.protocol==='file:'||new URLSearchParams(location.search).get('preview')==='1')document.documentElement.classList.add('preview');
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=d=>`${d.getFullYear()}. ${String(d.getMonth()+1).padStart(2,'0')}. ${String(d.getDate()).padStart(2,'0')}`;
+const fmtISO=s=>s?esc(String(s).replace(/-/g,'. ')):'—';
+/* 만기까지 남은 일수는 조회표에 굳은 값을 쓰지 않고 화면에서 다시 센다 —
+   조회표는 생성 시점에 박제되므로 하루만 지나도 D-N 이 틀어진다. */
+const dLeft=iso=>{const d=new Date(iso+'T00:00:00');return isNaN(d)?null:Math.ceil((d-new Date())/864e5)};
+const $=id=>document.getElementById(id);
+const kv=rows=>rows.map(([k,v,sub])=>`<div><dt>${k}</dt><dd>${v}${sub?`<small>${sub}</small>`:''}</dd></div>`).join('');
+const digits=s=>String(s||'').replace(/[^0-9]/g,'');
+const EST_METHOD={lot:'지번 주소', road:'도로명 주소', name:'시군구 내 상호', registered:'사업자등록 주소'};
+/* 분석 화면 주소와 인허가 주소가 같은 건물인지 — 도로명+건물번호로 비교한다. */
+function addrDiffers(a,b){
+  const E=window.YieldaEstimate; if(!E) return false;
+  const ka=E.roadKey(E.splitRegion(a)[1]), kb=E.roadKey(E.splitRegion(b)[1]);
+  const ra=E.splitRegion(a)[0], rb=E.splitRegion(b)[0];
+  return !!(ka&&kb)&&(ka!==kb||ra!==rb);
+}
+/* 추정 매칭이 실패한 이유 — 후보를 고르지 않고 그대로 보여 준다. */
+function estReason(e){
+  if(!e) return '매칭되는 인허가 기록을 찾지 못했습니다.';
+  const names=(e.candidates||[]).map(c=>c.name).slice(0,3).join(', ');
+  switch(e.status){
+    case 'ambiguous': return `후보가 여럿이라 특정하지 못했습니다 (${names}) — 상담 시 확인.`;
+    case 'building_only': return `같은 주소의 인허가 기록 중 상호가 일치하는 곳이 없습니다 (${names}).`;
+    case 'no_district': return '주소에서 시군구를 확인하지 못했습니다.';
+    case 'error': return '전국 인허가 데이터를 불러오지 못했습니다.';
+    default: return '전국 인허가 데이터에서 이 매장을 찾지 못했습니다 — 인허가 업종이 아니거나 상호·주소가 다를 수 있습니다.';
+  }
+}
+
+/* 판정 룰 v2 (data/rules.json 카스케이드, 순서가 곧 규칙) — G1 → A0 → MU → D100 → FB66 → N0.
+   조회표에 값이 있으면 그 결과를 그대로 쓰고, 없을 때만 여기서 계산한다. */
+function judge(f){
+  if(f.isGym)                return {step:'G1',  grade:'B', kind:null};
+  if(f.area==null)           return {step:'A0',  grade:'C', kind:null};
+  if(f.multiUse)             return {step:'MU',  grade:'A', kind:'화재배상책임보험'};
+  if(f.area>=100)            return {step:'D100',grade:'A', kind:'재난배상책임보험'};
+  if(f.basement&&f.area>=66) return {step:'FB66',grade:'B', kind:'화재배상책임보험'};
+  return                            {step:'N0',  grade:'C', kind:null};
+}
+const TARGET=new Set(['MU','D100','FB66','T1']);   // 의무 대상
+const WITHHELD=new Set(['A0','X0','M0']);                // 판정 보류 — 「대상 아님」과 절대 같지 않다
+const VERDICT={
+  MU:'의무 가입 대상 가능성 높음', D100:'의무 가입 대상 가능성 높음', FB66:'의무 가입 대상 가능성',
+  N0:'의무 가입 대상 아닐 가능성 높음', G1:'의무 가입 대상 아닐 가능성 높음', A0:'판정 보류 — 면적 미상',
+  X0:'판정 보류 — 판정 룰 미적용 업종', M0:'판정 보류 — 인허가 기록 미확인'};
+const BASIS={
+  MU:'다중이용업소 신고 업소 — 다중이용업소법 제13조의2',
+  D100:'소재지 면적 100㎡ 이상 — 재난안전법 제76조의5 · 시행령 별표3 제6호 「음식점」',
+  FB66:'지하 66㎡ 이상 — 다중이용업소법 시행령 제2조제1호가목',
+  N0:'소재지 면적 100㎡ 미만 · 다중이용업소 신고 없음 — 의무 가입 기준 미달',
+  G1:'체력단련장 — 의무보험 대상 업종 아님',
+  A0:'소재지 면적을 확인하지 못해 판정을 보류합니다',
+  X0:'이 업종에는 아직 판정 룰이 없습니다 — 인허가 사실만 전달하고 상담 시 확인합니다',
+  M0:'전국 인허가 데이터에서 이 매장을 특정하지 못해 판정을 보류합니다'};
+
+/* 쿼리스트링의 실제 값(분석 응답에서 그대로 전달된다) */
+function queryStore(){
+  const q=new URLSearchParams(location.search), w=window.__YIELDA_STORE__||{};
+  const g=k=>(w[k]!=null&&w[k]!=='')?String(w[k]):q.get(k);
+  const addr=g('addr')||'';
+  return {name:g('name')||'', bno:g('bno')||'', addr, gu:g('gu')||addr.split(' ').slice(0,2).join(' '),
+          cat:g('cat')||'', cons:g('consistency')||'', svc:'사업장 보험',
+          // 추정 조회 입력 (estimate-lookup inputs) — insurance-link.ts 가 넘긴다.
+          jibun:g('jibun')||'', place:g('place')||'', nts:g('nts')||'',
+          // 사업자등록 기준 (registered identity, APICK/bizno) — 대표자명·전화번호는 오지 않는다.
+          reg:{src:g('reg_src')||'', name:g('reg_name')||'', addr:g('reg_addr')||'', type:g('reg_type')||'',
+               status:g('reg_status')||'', tax:g('tax_type')||'',
+               rep:g('reg_rep')||'', phone:g('reg_phone')||''}};
+}
+
+let TABLE={}, STORE=null;
+
+/* 업종별 판정 (estimate path). 규칙은 업종 (business type) 마다 estimate.types.rule 에
+   실려 온다 (devFS/data/insurance_type_rules.json — 법령 원문 확인분만):
+     byClass  업태 (sub-type) 별 예외 — 예: 휴게음식점 중 키즈카페는 면적 무관 화재배상
+     none     「대상 아님」 근거 (예: 소규모 체육시설업 — 체육시설법 제26조 단서)
+     minArea  면적 기준 (없으면 업종 전체), basementMinArea 지하 기준, classIncludes 해당 업태만
+     muFlag   이 업종은 법령상 다중이용업 — 인허가의 다중이용업소 신고(Y)를 믿어도 된다
+   음식점 (food) 은 룰 v2 (judge). 다중이용업이 아닌 업종(미용업·숙박업 등)의 신고 Y 는
+   사실로만 보여 준다 — 그것만으로 화재배상 대상이라고 하지 않는다 (리뷰 2026-10-01).
+   규칙이 없는 업종은 X0 — 판정하지 않는다. */
+function applyRule(r,f){
+  if(r.none) return {step:'N0', grade:'C', kind:null, verdict:r.verdict||VERDICT.N0, basis:r.basis};
+  if(r.minArea!=null&&f.area==null) return {step:'A0', grade:'C', kind:null};
+  const basementHit=r.basementMinArea!=null&&f.basement&&f.area>=r.basementMinArea;   // 지하 기준 (basement threshold)
+  if(r.minArea==null||f.area>=r.minArea||basementHit)
+    return {step:'T1', grade:r.grade||'A', kind:r.insurance, verdict:r.verdict||'의무 가입 대상 가능성 높음', basis:r.basis};
+  return {step:'N0', grade:'C', kind:null, basis:`소재지 면적 ${r.minArea}㎡ 미만 — ${r.basis}`};
+}
+function judgeFor(t,f){
+  const fam=(t&&t.family)||'other', r=(t&&t.rule)||null, cls=f.cls||'';
+  const byClass=r&&(r.byClass||[]).find(c=>c.classIncludes.some(k=>cls.includes(k)));
+  if(byClass) return applyRule(byClass,f);
+  if(fam==='gym'||f.isGym) return judge({isGym:true});
+  if(fam==='food') return judge(f);
+  if(f.multiUse&&r&&r.muFlag) return judge({area:f.area==null?0:f.area, multiUse:true});
+  const flagNote=f.multiUse?' · 인허가에 다중이용업소 신고 기록이 있습니다 — 상담 시 확인':'';
+  if(!r||(!r.insurance&&!r.none)) return {step:'X0', grade:'C', kind:null, basis:BASIS.X0+flagNote};
+  if(r.classIncludes&&!r.classIncludes.some(k=>cls.includes(k))) return {step:'X0', grade:'C', kind:null, basis:BASIS.X0+flagNote};
+  return applyRule(r,f);
+}
+
+/* 한 매장이 같은 주소에 인허가를 여러 개 가지면(호텔 = 숙박업 + 일반음식점) 모두 판정해
+   가장 강한 결과를 쓴다 — 작은 음식점 인허가가 숙박업의 의무를 지우면 안 된다. */
+const V_RANK=v=>TARGET.has(v.step)?(v.grade==='A'?0:1):WITHHELD.has(v.step)?2:3;
+const factsOf=row=>({area:row[3], multiUse:!!row[4], basement:!!row[9], isGym:!!row[8], cls:row[6]||''});
+function strongest(e){
+  const rows=[e.row,...(e.others||[])];
+  const scored=rows.map((row,i)=>({row, i, v:judgeFor((e.types||{})[row[5]]||null, factsOf(row))}));
+  scored.sort((x,y)=>V_RANK(x.v)-V_RANK(y.v)||x.i-y.i);
+  return {...e, row:scored[0].row, others:scored.slice(1).map(x=>x.row)};
+}
+
+/* 내부 지역 라벨 → 화면용 (전남·광주는 LOCALDATA 표기 그대로). */
+const regionLabel=r=>String(r||'').replace(/^전남광주(?= |$)/,'전남광주통합특별시');
+
+/** 추정 매칭 결과(행)를 조회표 레코드와 같은 모양으로 바꾼다. */
+function recFromEstimate(e){
+  // v2 row: [name, roadTail, lotTail, area, multiUse, typeIdx, class, licenceDate,
+  //          isGym, basement, policy20682[own,holder,start,end,n], licenceInsurance[insurer,start,end]]
+  const row=e.row, t=(e.types||{})[row[5]]||null, pol=row[10], ins=row[11];
+  return {name:row[0], bno:'', addr:`${regionLabel(e.region)} ${row[1]||row[2]}`.trim(), gu:regionLabel(e.region),
+    cat:row[6]||(t&&t.ko)||'', typeKo:t?t.ko:'', type:t, area:row[3], multiUse:!!row[4],
+    isGym:!!row[8], basement:!!row[9], salesStatus:'영업/정상', licenceDate:row[7]||null,
+    policy:pol&&pol[0]?{start:pol[2], end:pol[3], holder:pol[1]}:null,
+    policyOther:pol&&!pol[0]?{holder:pol[1]}:null,
+    licIns:ins?{insurer:ins[0], start:ins[1], end:ins[2]}:null};
+}
+
+function compose(q,rec,est){
+  const base={...q, salesStatus:null, licenceDate:null, ntsStatus:q.nts||null, ntsValid:null, ntsClosedDate:null,
+              policy:null, policyOther:null, est:est||null};
+  if(!rec){                                   // 조회표에도 추정에도 없음 — 추측 금지, 보류.
+    const step=est?'M0':'A0';                 // 조회 실패·매칭 실패 = M0 (면적 미상이 아니다)
+    const v={step, grade:'C', kind:null};
+    return {...base, area:null, multiUse:false, basement:/지하/.test(q.addr), known:false,
+            v:{...v, verdict:VERDICT[step], basis:BASIS[step]}};
+  }
+  if(est){                                    // 전국 인허가 데이터 추정 매칭
+    const c=judgeFor(rec.type,{area:rec.area, multiUse:rec.multiUse, basement:rec.basement, isGym:rec.isGym, cls:rec.cat});
+    return {...base,
+      name:q.name||rec.name, bno:q.bno, addr:rec.addr, gu:rec.gu||q.gu,
+      cat:rec.typeKo&&rec.cat&&rec.cat!==rec.typeKo?`${rec.typeKo} · ${rec.cat}`:(rec.typeKo||rec.cat),
+      area:rec.area, multiUse:rec.multiUse, basement:rec.basement,
+      salesStatus:rec.salesStatus, licenceDate:rec.licenceDate,
+      known:true, policy:rec.policy, policyOther:rec.policyOther, licIns:rec.licIns,
+      otherLicences:(est.others||[]).map(r=>{const t=(est.types||{})[r[5]]; return t?t.ko:r[6]}).filter(Boolean),
+      v:{step:c.step, grade:c.grade, kind:c.kind, verdict:c.verdict||VERDICT[c.step], basis:c.basis||BASIS[c.step]}};
+  }
+  // 조회표의 step 을 그대로 믿지 않고 카스케이드를 다시 태운다 — 룰을 고치면 화면이 같이 바뀐다.
+  const c=judge({area:rec.area, multiUse:rec.multiUse, basement:rec.basement, isGym:rec.isGym===true});
+  if(c.step!==rec.step) console.warn('[insurance] 판정 불일치',rec.bno,'조회표',rec.step,'재계산',c.step);
+  return {...base,
+    // 주소는 인허가 기록 쪽을 쓴다 — 분석 화면 주소(카카오)가 다른 매장일 수 있다.
+    name:q.name||rec.name, bno:q.bno||rec.bno, addr:rec.addr||q.addr, gu:rec.gu||q.gu,
+    cat:rec.cat||q.cat, area:rec.area, multiUse:rec.multiUse, basement:rec.basement,
+    salesStatus:rec.salesStatus, licenceDate:rec.licenceDate,
+    ntsStatus:rec.ntsStatus, ntsValid:rec.ntsValid, ntsClosedDate:rec.ntsClosedDate,
+    known:true, policy:rec.policy, policyOther:rec.policyOther,
+    v:{step:c.step, grade:c.grade, kind:c.kind, verdict:VERDICT[c.step], basis:BASIS[c.step], hint:rec.hint}};
+}
+
+/* 20682 는 행정안전부 「재난배상책임보험」 가입 등록부다. 체육시설업자 배상·야영장·
+   테마파크처럼 다른 보험이 판정이면 그 보험의 공개 등록부는 없다 — 섞어 쓰지 않는다. */
+const registerApplies=s=>!s.v.kind||/재난배상|화재배상/.test(s.v.kind);
+const expiryNote=p=>{const n=dLeft(p.end);return `만기 ${fmtISO(p.end)}${n==null?'':n<0?` · ${-n}일 경과`:` · D-${n}`}`};
+
+/* 가입 확인 — 「미가입」이라고 쓰지 않는다. 등록부에 기록이 없다는 것과 가입하지
+   않았다는 것은 다르고, 단정은 금소법 시행령 제20조제1항제4호 위반이다. */
+function cover(s){
+  // 반환값은 평문 — 이스케이프는 render 에서 한 번만 한다.
+  const est=!!s.est;
+  // 추정 경로의 계약 기록은 상호 비교로 붙인 것이다 — 계약자명을 보여 주고 확인을 맡긴다.
+  const ownLabel=est?'등록부 계약 기록':'본인 계약 확인';
+  const ownNote=p=>`${est&&p.holder?`계약자 ${p.holder} · `:''}${expiryNote(p)}${est?' — 같은 매장인지 상담 시 확인':''}`;
+  if(!registerApplies(s)) return {label:'확인 필요',
+    note:`${s.v.kind} 은 공개 가입 등록부가 없습니다 — 상담 시 확인`+
+      (s.policy?` (재난배상책임보험 등록부 기록: ${ownNote(s.policy)})`:'')};
+  if(s.policy) return {label:ownLabel, note:ownNote(s.policy)};
+  if(WITHHELD.has(s.v.step)) return {label:'확인 필요',
+    note:s.v.step==='A0'?'소재지 면적을 확인하지 못해 가입 여부를 조회하지 못했습니다'
+      :s.v.step==='X0'?'판정 규칙이 없는 업종이라 가입 여부를 판정하지 않았습니다'
+      :s.est&&s.est.status==='error'?'전국 인허가 데이터를 불러오지 못해 가입 여부를 조회하지 못했습니다'
+      :'인허가 기록을 특정하지 못해 가입 여부를 조회하지 못했습니다'};
+  if(s.policyOther) return {label:TARGET.has(s.v.step)?'조회 불가':'해당 없음',
+    note:`같은 주소에 다른 업체(${s.policyOther.holder}) 계약만 확인됩니다`};
+  if(!TARGET.has(s.v.step)) return {label:'해당 없음', note:'의무 대상이 아닐 가능성이 높아 가입 확인을 생략했습니다'};
+  return {label:'기록 없음', note:'행정안전부 등록부에 이 매장 기록이 없습니다 — 미가입을 뜻하지 않습니다'};
+}
+
+/* ── 보험사에 전달된 정보 (lead payload) — 실제 값만: 사업자등록(APICK/bizno) ·
+   인허가(LOCALDATA 또는 조회표) · 판정 · 검증. 대표자 이름·연락처는 서버가 가린 값이다. ── */
+function renderPayload(s,c,now){
+  const r=(s.q&&s.q.reg)||{}, join=a=>a.filter(Boolean).join(' · ');
+  const who=r.rep?join([r.rep, r.phone||'연락처 미등록']):'대표자 정보 없음';
+  const biz=join([r.name||s.name, s.bno, r.tax, r.type&&`업태 ${r.type}`, r.addr&&`등록 주소 ${r.addr}`]);
+  const shop=s.known?join([s.est?s.est.matchedName:s.name, s.addr, s.cat, s.area!=null?`${s.area}㎡`:'면적 미상',
+    `다중이용업소 ${s.multiUse?'Y':'N'}`, s.licenceDate&&`인허가 ${String(s.licenceDate).replace(/-/g,'. ')}`]):'인허가 기록 미확인';
+  const judgeTxt=join([s.v.verdict, s.v.kind, `단계 ${s.v.step}`, `등급 ${s.v.grade}`, `가입 확인 ${c.label}`,
+    s.policy&&registerApplies(s)&&`만기 ${String(s.policy.end).replace(/-/g,'. ')}`]);
+  const check=join([s.ntsStatus&&`국세청 ${s.ntsStatus}`, r.src&&`출처 ${r.src==='apick'?'APICK':r.src}`,
+    s.est?(s.known?`인허가 ${EST_METHOD[s.est.method]||''} 매칭 · 상호 일치도 ${s.est.score}`:'인허가 매칭 실패'):'조회표']);
+  $('payloadText').textContent=`“신청 정보 — ${who} · 오후 2–5시 · ${s.svc}  /  사업자 — ${biz||'미확인'}  /  매장 프로필 — ${shop}  /  보험 판정 — ${judgeTxt}  /  검증 상태 — ${check||'미확인'}”`;
+  $('payloadCite').textContent=`리드 전송 ${fmt(now)} · 보험사 · 이메일 + 관리 시트`;
+  $('consentCite').textContent=`동의 ${fmt(now)} · 제공 항목 고지`;
+  $('contactCell').innerHTML=r.rep
+    ?`${esc(r.rep)} · ${esc(r.phone||'연락처 미등록')} <small>사업자등록 대표자 기준 · 상담 시 본인 확인</small>`
+    :'대표자 정보 없음 <small>상담 시 본인 확인</small>';
+}
+
+function render(){
+  const s=STORE, v=s.v, c=cover(s), now=new Date(), target=TARGET.has(v.step);
+  // 국세청과 인허가 어느 쪽이든 폐업/휴업이면 상담 배정을 걸지 않는다. 두 쪽이
+  // 엇갈리면(명의 교체 직후 등) 그것도 사람이 확인해야 할 사유다.
+  const ntsClosed=/폐업|휴업/.test(s.ntsStatus||''), licClosed=/폐업|휴업/.test(s.salesStatus||'');
+  const conflict=s.known&&!!s.ntsStatus&&(ntsClosed!==licClosed);
+  const blocked=ntsClosed||licClosed;
+  $('storeName').textContent=s.name||'매장 정보 없음';
+  $('heroSub').textContent=`${v.verdict} · ${c.label} · ${s.gu||'—'}`;
+  $('pillState').textContent=blocked?'영업 상태 확인 필요':'접수됨';
+  $('pillFree').hidden=blocked;
+  $('pillEst').hidden=!(s.est&&s.known);
+  $('withdraw').disabled=false;
+
+  const ntsSub=s.ntsStatus
+    ? `국세청 ${esc(s.ntsStatus)}${s.ntsClosedDate?` (${fmtISO(String(s.ntsClosedDate).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'))})`:''}`
+    : '';
+  $('judgeRows').innerHTML=kv([
+    ['판정', esc(v.verdict), s.est&&s.known?(s.est.addressMatched===false
+        ?`추정 — 같은 시군구의 같은 상호 인허가 (주소 불일치 · 같은 매장인지 상담 시 확인)`
+        :`추정 — 인허가 기록 매칭 (${esc(EST_METHOD[s.est.method]||'')} · 상호 일치도 ${esc(s.est.score)})`)
+      :s.known?'공공 데이터 확인':'조회 자료 없음 — 상담 시 확인'],
+    ['보험 종류', esc(v.kind||'—')],
+    ['가입 확인', esc(c.label), esc(c.note)],
+    ['업종', esc(s.cat||'—'), s.known?(s.est?'인허가 업종 기준 (추정 매칭)':'인허가 위생업태명 기준'):'분석 응답 기준'],
+    ['소재지 면적', s.area!=null?`${esc(s.area)}㎡ · 약 ${Math.round(s.area/3.3058)}평`:'확인 필요'],
+    ...(s.licIns?[['인허가 보험 기록', esc(s.licIns.insurer||'보험사 미기재'),
+      `${s.licIns.start||s.licIns.end?`${fmtISO(s.licIns.start)} ~ ${fmtISO(s.licIns.end)}`:'기간 미기재'} · 인허가 데이터에 기재된 값`]]:[]),
+    ...(s.otherLicences&&s.otherLicences.length?[['같은 상호 인허가', esc([...new Set(s.otherLicences)].join(' · ')),
+      '같은 주소·상호의 다른 인허가 — 판정은 보험 관련성이 가장 큰 업종 기준']]:[]),
+    // 신고 사실과 업종·면적 판정을 구분한다 — 키즈카페처럼 신고 없이도 다중이용업일 수 있다.
+    ['다중이용업소 신고', s.multiUse?'신고 기록 있음':(s.known?'신고 기록 없음':'확인 필요'),
+      !s.multiUse&&(v.step==='FB66'||/다중이용업소/.test(v.kind||''))?'업종·면적 기준으로는 다중이용업 가능성 — 상담 시 확인':''],
+    ['영업 상태', esc(s.salesStatus||'—'), ntsSub],
+    ['주소', esc(s.addr||'—'), s.known&&s.q&&s.q.addr&&addrDiffers(s.q.addr,s.addr)?`분석 화면 주소 ${esc(s.q.addr)} — 다른 매장일 수 있어 상담 시 확인`:''],
+    ['사업자번호', esc(s.bno||'미확보'),
+      s.ntsValid===false?'국세청에 등록되지 않은 번호입니다'
+        :(s.cons===''?'':Number(s.cons)>=0.6?`동일 업체 확인 (정합성 ${esc(s.cons)})`
+          :`분석 단계 매장 일치도 낮음 (${esc(s.cons)}) — 다른 매장일 수 있습니다`)],
+  ]);
+  // 매칭 실패면 일반 문구 대신 실패 이유만 쓴다 (no-match: the reason alone).
+  $('judgeWhy').textContent=s.est&&!s.known?estReason(s.est):v.basis;
+
+  $('collRisk').style.display=target?'':'none';
+  $('riskTitle').textContent=v.kind?`${v.kind} 기준`:'의무보험 기준';
+  $('riskList').innerHTML=[
+    v.step==='MU'?'다중이용업소로 신고된 업소는 화재배상책임보험 가입 의무가 있습니다 — 다중이용업소법 제13조의2.'
+      :v.step==='T1'?`${esc(v.basis)}.`
+      :v.step==='FB66'?`${esc(BASIS.FB66)} — 지하 영업장은 66㎡ 이상이면 다중이용업으로 화재배상책임보험 대상일 수 있습니다.`
+      :'음식점은 바닥면적 합계 100㎡ 이상이면 재난배상책임보험 가입 의무가 있습니다 — 재난안전법 제76조의5 · 시행령 별표3 제6호.',
+    registerApplies(s)?'화재배상책임보험에 가입하면 재난배상책임보험 가입으로 갈음됩니다 — 재난안전법 제76조의5 제2항 후단.':null,
+    '의무보험은 매년 갱신합니다 — 만기 이후 공백 기간에도 같은 배상 책임이 발생합니다.',
+    '실제 가입 의무와 보장 범위는 상담사가 확인해 드립니다.',
+  ].filter(Boolean).map(t=>`<li>${t}</li>`).join('');
+
+  $('dataList').innerHTML=[
+    s.ntsStatus?`국세청 사업자 상태조회 — ${esc(s.ntsStatus)}.`
+      :(s.bno?'국세청 사업자 상태조회 — 조회 결과 없음.':'국세청 사업자 상태조회 — 사업자번호 미확보로 조회 생략.'),
+    s.known?`지방행정인허가 데이터${s.est?` (${esc(s.est.asOf.localdata)} 기준, 전국)`:''} — ${s.est?`「${esc(s.est.matchedName)}」 ${esc(EST_METHOD[s.est.method]||'')}·상호 매칭 · `:''}소재지 면적 ${s.area!=null?s.area+'㎡':'미상'} · 다중이용업소 ${s.multiUse?'Y':'N'} · 영업상태 ${esc(s.salesStatus)} · 인허가 ${fmtISO(s.licenceDate)}.${s.est?' 사업자번호는 인허가 데이터에 없어 주소·상호로 찾은 추정입니다.':''}`
+      :`지방행정인허가 데이터 — ${esc(estReason(s.est))}`,
+    (()=>{const head=`행정안전부 재난배상책임보험 가입정보${s.est?` (${esc(s.est.asOf.policy20682)} 기준)`:''}`;
+      if(s.policy) return `${head} — ${s.est?`계약자 ${esc(s.policy.holder||'')} 계약`:'본인 계약'} ${fmtISO(s.policy.start)} ~ ${fmtISO(s.policy.end)}.`;
+      if(s.policyOther) return `${head} — 같은 주소의 다른 업체(${esc(s.policyOther.holder)}) 계약만 확인됩니다.`;
+      if(v.step==='M0') return `${head} — 인허가 기록을 특정하지 못해 조회하지 못했습니다.`;
+      if(v.step==='A0') return `${head} — 면적을 확인하지 못해 조회하지 못했습니다.`;
+      return `${head} — 이 매장 기록이 없습니다 (미가입을 뜻하지 않습니다).`;})(),
+    v.step==='M0'?'판정 보류 — 인허가 기록을 특정하지 못함, 리드 등급 C.'
+    :['T1','X0'].includes(v.step)||(s.est&&v.basis!==BASIS[v.step])
+      ?`업종별 판정 규칙 — 단계 ${esc(v.step)} 적용, 리드 등급 ${esc(v.grade)} (법령 원문 기준, 2026-10-01 확인).`
+      :`판정 룰 v2 — 단계 ${esc(v.step)} 적용, 리드 등급 ${esc(v.grade)}.`,
+  ].map(t=>`<li>${t}</li>`).join('');
+
+  // 이미 만기가 지난 계약에 「만기 전 안내」라고 쓰면 사실과 다르다 — 두 경우를 나눈다.
+  const polLapsed=s.policy&&dLeft(s.policy.end)!=null&&dLeft(s.policy.end)<0;
+  const policyHere=s.policy&&registerApplies(s);
+  $('svcCell').innerHTML=`${esc(s.svc)} <small>${target?(policyHere?(polLapsed?'갱신 상담 · 만기 경과 확인':'갱신 상담 · 만기 전 안내 요청'):'신규 가입 상담 · 의무보험 확인')
+    :WITHHELD.has(v.step)?'보험 상담 · 의무보험 해당 여부 확인':'임의 보험 상담 · 화재 · 시설'}</small>`;
+
+  const rows=blocked
+    ? [['접수',100,'완료','1/3'],['배정',0,'보류','2/3'],['상담',0,'대기','3/3']]
+    : [['접수',100,'완료','1/3'],['배정',s.policy?60:35,'진행 중','2/3'],['상담',0,'대기','3/3']];
+  $('vecTitle').textContent='진행 상태';
+  $('vecRows').innerHTML=rows.map(([k,p,t,n])=>`<div class="vrow" style="margin-bottom:12px"><b>${k}</b><span class="bar"><i style="width:${p}%"></i></span><span class="tag">${t}</span><span class="num">${n}</span></div>`).join('');
+  $('vecNotes').innerHTML=[
+    `신청 시각 ${fmt(now)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} · 진입 경로 재생 화면`,
+    blocked?`영업 상태를 먼저 확인합니다 — 국세청 ${esc(s.ntsStatus||'미확인')} · 인허가 ${esc(s.salesStatus||'미확인')}. 확인 전까지 상담사를 배정하지 않습니다.`
+      :policyHere&&dLeft(s.policy.end)!=null?(dLeft(s.policy.end)<0
+        ?`등록부상 계약 만기일이 ${-dLeft(s.policy.end)}일 지났습니다 — 갱신 여부를 상담사가 확인합니다.`
+        :`등록부상 만기까지 ${dLeft(s.policy.end)}일 — 갱신 시점을 상담사가 안내합니다.`)
+      :v.step==='A0'?'소재지 면적을 확인하지 못했습니다 — 상담사가 확인한 뒤 안내해 드립니다.'
+      :v.step==='X0'?'판정 규칙이 없는 업종입니다 — 의무보험 해당 여부를 상담사가 확인합니다.'
+      :v.step==='M0'?'인허가 기록을 특정하지 못했습니다 — 매장 정보를 상담사가 확인합니다.'
+      :target?'의무보험 가입 여부를 상담사가 확인한 뒤 안내해 드립니다.'
+      :'의무 대상이 아닐 가능성이 높아 임의 보험 상담으로 안내합니다.',
+    conflict?'국세청 사업자 상태와 인허가 영업 상태가 서로 다릅니다 — 명의 변경 가능성이 있어 사람이 확인합니다.':null,
+    blocked?null:'Yielda 이용료 무료 혜택이 적용되었습니다 — 상담만 받아도 유지됩니다.',
+  ].filter(Boolean).map(t=>`<li><span>${t}</span></li>`).join('');
+
+  renderPayload(s,c,now);
+  $('nextStep3').textContent=blocked?'영업 상태 확인 후 상담이 진행됩니다'
+    :target?'상담만으로 가입할 의무는 없습니다 — 가입 여부와 보험사는 사장님이 결정'
+    :WITHHELD.has(v.step)?'상담에서 의무보험 해당 여부부터 확인합니다'
+    :'상담 후 필요할 때만 설계합니다 — 상담만으로 가입할 의무는 없습니다';
+  markPick();
+}
+
+/* 미리보기 전용 매장 전환(배포 화면에는 나타나지 않는다) */
+function buildPicker(){
+  const sel=$('pick'); if(!sel) return;
+  sel.innerHTML=Object.entries(TABLE).map(([d,r])=>`<option value="${d}">${esc(r.name)} · ${esc(r.bno)}</option>`).join('');
+  sel.onchange=()=>{const r=TABLE[sel.value]; STORE=compose({...queryStore(),name:'',bno:'',addr:'',gu:'',cat:''},r);
+    render(); scrollTo({top:0,behavior:'smooth'})};
+}
+function markPick(){const sel=$('pick'); if(sel&&STORE&&STORE.bno&&TABLE[digits(STORE.bno)]) sel.value=digits(STORE.bno)}
+
+document.querySelectorAll('[data-coll]').forEach(b=>{
+  const sync=c=>b.setAttribute('aria-expanded',String(c.dataset.state==='open'));
+  sync(b.closest('.coll'));
+  b.addEventListener('click',()=>{const c=b.closest('.coll');c.dataset.state=c.dataset.state==='open'?'closed':'open';sync(c)});
+});
+$('withdraw').addEventListener('click',()=>{
+  if(!confirm('상담 신청을 철회할까요?\n제3자 제공 동의도 함께 철회되며, 이미 전달된 정보는 연락 중단 처리됩니다.'))return;
+  $('pillState').textContent='철회됨';$('withdraw').disabled=true;
+  $('vecRows').innerHTML=`<div class="vrow"><b>철회</b><span class="bar"><i style="width:100%"></i></span><span class="tag">접수됨</span><span class="num">✓</span></div>`;
+  toast('철회가 접수되었습니다');
+});
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200)}
+
+(async function(){
+  const q=queryStore();
+  try{
+    const res=await fetch(LEADS_URL,{cache:'no-cache'});
+    if(res.ok) TABLE=(await res.json()).leads||{};
+  }catch(e){ /* 조회표를 못 읽으면 A0 로 떨어진다 — 더미로 채우지 않는다. */ }
+  let rec=TABLE[digits(q.bno)]||null;
+  if(!rec&&!q.bno&&document.documentElement.classList.contains('preview')) rec=Object.values(TABLE)[0]||null;
+  let est=null;
+  if(!rec&&q.bno&&window.YieldaEstimate){
+    const eq={name:q.reg.name||q.name, place:q.place||(q.reg.name?q.name:''),
+              addr:q.addr, jibun:q.jibun, gu:q.gu, reg:q.reg.addr};
+    const cached=YieldaEstimate.peek?YieldaEstimate.peek(eq):null;
+    if(cached){
+      est=cached;
+    }else{
+      // 첫 조회는 Render 무료 인스턴스가 깨어나느라 최대 1분 걸린다 — 결과처럼 보이는
+      // 배지·빈 카드를 띄우지 않고, 폐업·휴업이면 그 사실부터 보여 준다.
+      const closed=/폐업|휴업/.test(q.nts||'');
+      $('storeName').textContent=q.name||'매장 정보 조회 중';
+      $('heroSub').textContent='전국 인허가 데이터에서 추정 조회 중… (첫 조회는 최대 1분)';
+      $('pillState').textContent=closed?'영업 상태 확인 필요':'조회 중';
+      $('pillFree').hidden=true;
+      $('collRisk').style.display='none';
+      $('judgeRows').innerHTML=kv([['판정','조회 중…','전국 인허가 데이터에서 이 매장의 인허가 기록을 찾고 있습니다']]);
+      $('judgeRows').setAttribute('aria-busy','true');
+      try{ est=await YieldaEstimate.estimate(eq); }
+      catch(e){ est={status:'error'}; }
+      $('judgeRows').removeAttribute('aria-busy');
+    }
+    if(est.status==='matched'){ est=strongest(est); rec=recFromEstimate(est); est={...est, matchedName:est.row[0]}; }
+  }
+  STORE=compose(rec&&!q.name?{...q,name:'',addr:'',gu:'',cat:''}:q, rec, est);
+  STORE.q=q;
+  buildPicker(); render();
+})();
+</script>
+
+</body>
+</html>

@@ -1,96 +1,44 @@
-# secrets
+# ─────────────────────────────────────────────────────────── secrets
+# .env 에는 실제 키가 들어간다. 절대 커밋하지 않는다.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# python
+# ─────────────────────────────────────────────── python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-.pytest_cache/
+venv/
 .mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
 
-# debug artefacts
-debug_result_page.png
-debug_result_page.txt
-api_errors_*.log
-logs/
+# ─────────────────────────────────────────────── node / frontend
+# 소스(frontend/src 등)는 **추적한다**. 의존성과 빌드 산출물만 제외한다.
+node_modules/
+frontend/dist/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+*.tsbuildinfo
+
+# ─────────────────────────────────────────────── 런타임 산출물
+# app/utils/cache.py 는 메모리 캐시지만, 분석 응답 덤프가 여기 쌓인다.
 cache/
 *.log
 
-# node — frontend/, backend/ and client/ each carry their own dependency trees (~440MB)
-node_modules/
-frontend
-backend
-# client/ 는 Framer 디자인 시스템 프로토타이핑용 샌드박스다. frontend/ 처럼 자체 git
-# 저장소를 두고, 정리되면 frontend/ 로 옮긴다. 여기서 무시하지 않으면 부모 저장소가
-# gitlink(유령 서브모듈)를 기록해 버린다.
-# Sandbox for prototyping the Framer design system; carries its own git repo like
-# frontend/. Ignored here so a parent-level `git add -A` cannot record a gitlink.
-client
-*.tsbuildinfo
-
-# tooling scratch — MCP browser captures and generated report artefacts
-.playwright-mcp/
-outputs/
-
-# os
+# ─────────────────────────────────────────────── 에디터 · OS · 도구
 .DS_Store
-Thumbs.db
-
-# editors
-.vscode/
 .idea/
+.vscode/
+.claude/
+.playwright-mcp/
+.dev-shots/
 
-# docker — local overrides only; Dockerfile and docker-compose.yml are tracked
-docker-compose.override.yml
-.docker/
-
-# 실사업자 원본 데이터 — 테스트 번호 추출용으로만 사용했다.
-# 통신판매업 신고는 공개 정보지만 저장소에 5MB를 박을 이유가 없고,
-# 시연에 필요한 번호는 HANDOVER.md 와 scripts/smoke_all.py 에 이미 들어 있다.
-# Raw lists of real businesses, used only to source test numbers. Not needed at runtime.
-쇼핑사업자*/
-
-# ── 내부 문서 · 인수인계 자료 — 실행에 필요 없는 파일 ──
-# Internal docs / handover material — none of it is needed to run the app.
-
-# 인수인계 문서 (Handover)
-HANDOVER.md
-HANDOVER_PLAN.md
-HANDOVER_ko.md
-handover_docs/
-
-# 에이전트·데이터 메모 (Agent + data notes)
-CLAUDE.md
-data.md
-
-# 기획·설계 메모 (Planning / design notes)
-TPO_교체설계_사업자조회_KakaoLocal.md
-TPO_데모_구동법.md
-TPO_데모_설명서.md
-TPO_시연페이지_구현계획.md
-nts_api_status_report.md
-
-# 실사업자 번호 목록 — 실제 사업자등록번호가 들어 있어 공개 저장소에 두지 않는다.
-# Real business registration numbers — keep out of the repo.
-valid_business_numbers.md
-
-# 루트 임시 스크립트 — 정식 테스트는 tests/ 에 있다.
-# Ad-hoc root scripts; the real suite lives in tests/.
-test_location_search.py
-test_python_backend.py
-
-# 디자인 레퍼런스 스크린샷 (~5MB, 서드파티 캡처) — 필요하면 아래 줄만 지우면 된다.
-# Third-party design reference captures. Delete this line to keep tracking them.
-public/
-
-
-# 세션 중 생긴 스크린샷 — 저장소에 넣을 이유가 없다
+# ─────────────────────────────────────────────── 세션 스크래치
+# 작업 중 생긴 캡처·메모. 저장소에 남길 이유가 없다.
 image.png
-
-# 로컬 .env 백업 — 실제 키가 들어있다
-.env.bak.*
-
-.vercel
+*-compare.png
+stream-*.png
