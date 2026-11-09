@@ -143,8 +143,10 @@ export function OnboardingV3Page() {
           )}
         </main>
 
-        {/* Privacy policy link — this screen collects the business number. Opens in a new tab so the form state survives. */}
-        <footer className="shrink-0 px-8 pb-6 text-center text-xs text-white/60">
+        {/* Privacy policy link — this screen collects the business number. Opens in a new tab so the form state survives.
+            white/90 rather than the panel's usual white/60: measured on the blue panel that is 4.66:1 against 2.92:1,
+            so the one legally required link on this screen clears WCAG AA without relying on hover. */}
+        <footer className="shrink-0 px-8 pb-6 text-center text-xs text-white/90">
           <a
             href={PRIVACY_POLICY_URL}
             target="_blank"
