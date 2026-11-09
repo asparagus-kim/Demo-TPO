@@ -327,3 +327,85 @@
     @apply font-sans;
   }
 }
+
+/* Privacy policy body (/privacy). The policy HTML is injected verbatim, so it is
+   styled per tag here; colors come from the semantic tokens only. */
+.privacy-doc {
+  font-size: 15px;
+  line-height: 1.75;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.privacy-doc h2 {
+  margin: 2.5rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 1.25rem;
+  font-weight: 700;
+  scroll-margin-top: 1rem;
+}
+.privacy-doc p,
+.privacy-doc ul {
+  margin: 0 0 0.75rem;
+}
+.privacy-doc ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.privacy-doc li {
+  margin-bottom: 0.375rem;
+}
+.privacy-doc b {
+  font-weight: 700;
+}
+.privacy-doc .tw {
+  overflow-x: auto;
+  margin: 0.5rem 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.privacy-doc table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.privacy-doc th,
+.privacy-doc td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.privacy-doc tr:last-child td {
+  border-bottom: 0;
+}
+.privacy-doc th + th,
+.privacy-doc td + td {
+  border-left: 1px solid var(--border);
+}
+.privacy-doc th {
+  background: var(--panel);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.privacy-doc td.k {
+  min-width: 7em;
+  font-weight: 600;
+}
+.privacy-doc .box {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: 14px;
+}
+.privacy-doc .small {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 560px) {
+  .privacy-doc table {
+    min-width: 640px;
+  }
+}

@@ -143,7 +143,7 @@ export function OnboardingV3Page() {
           )}
         </main>
 
-        {/* 개인정보 처리방침 — 사업자번호를 받는 화면이라 하단에 둔다. 새 탭으로 연다. */}
+        {/* Privacy policy link — this screen collects the business number. Opens in a new tab so the form state survives. */}
         <footer className="shrink-0 px-8 pb-6 text-center text-xs text-white/60">
           <a
             href={PRIVACY_POLICY_URL}
