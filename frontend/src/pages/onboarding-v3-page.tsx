@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom"
 
 import { useAnalysis } from "@/lib/analysis-store"
+import { PRIVACY_POLICY_URL } from "@/lib/legal-links"
 import { useAnalysisFlow } from "@/lib/use-analysis-flow"
 import { Button } from "@/components/ui/button"
 import { BrandWordmark } from "@/components/yielda/brand"
@@ -141,6 +142,18 @@ export function OnboardingV3Page() {
             </div>
           )}
         </main>
+
+        {/* 개인정보 처리방침 — 사업자번호를 받는 화면이라 하단에 둔다. 새 탭으로 연다. */}
+        <footer className="shrink-0 px-8 pb-6 text-center text-xs text-white/60">
+          <a
+            href={PRIVACY_POLICY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4 transition-colors hover:text-white"
+          >
+            개인정보 처리방침
+          </a>
+        </footer>
       </div>
 
       {/* ── right: dark bg + centered player image (50%) ── */}
